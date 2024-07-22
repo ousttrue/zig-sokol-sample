@@ -6,6 +6,17 @@ const quat = @import("math.zig").Quat;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
 
+pub const InputState = struct {
+    screen_width: f32 = 0,
+    screen_height: f32 = 0,
+    mouse_left: bool = false,
+    mouse_right: bool = false,
+    mouse_middle: bool = false,
+    mouse_x: f32 = 0,
+    mouse_y: f32 = 0,
+    mouse_wheel: f32 = 0,
+};
+
 const Camera = struct {
     yfov: f32 = 0,
     near_clip: f32 = 0,
@@ -49,6 +60,7 @@ const state = struct {
     var camera = Camera{};
     var xform_a = RigidTransform{};
     var xform_b = RigidTransform{};
+    var input = InputState{};
 };
 
 pub fn setup() void {
@@ -101,7 +113,20 @@ fn computeVsParams(model: mat4) shd.VsParams {
     };
 }
 
-pub fn draw() void {
+pub fn draw(input_state: InputState) void {
+    if (input_state.mouse_right) {
+        const dx = input_state.mouse_x - state.input.mouse_x;
+        const dy = input_state.mouse_y - state.input.mouse_y;
+        state.camera.yaw -= dx * 0.01;
+        state.camera.pitch -= dy * 0.01;
+    }
+    if (input_state.mouse_wheel > 0) {
+        state.camera.position.z *= 0.9;
+    } else if (input_state.mouse_wheel < 0) {
+        state.camera.position.z *= 1.1;
+    }
+    state.input = input_state;
+
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
 

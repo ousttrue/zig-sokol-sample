@@ -29,6 +29,25 @@ export fn init() void {
     };
 }
 
+fn input_from_simgui() scene.InputState {
+    const io = ig.igGetIO().*;
+    var input = scene.InputState{
+        .screen_width = io.DisplaySize.x,
+        .screen_height = io.DisplaySize.y,
+        .mouse_x = io.MousePos.x,
+        .mouse_y = io.MousePos.y,
+    };
+
+    if (!io.WantCaptureMouse) {
+        input.mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left];
+        input.mouse_right = io.MouseDown[ig.ImGuiMouseButton_Right];
+        input.mouse_middle = io.MouseDown[ig.ImGuiMouseButton_Middle];
+        input.mouse_wheel = io.MouseWheel;
+    }
+
+    return input;
+}
+
 export fn frame() void {
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
@@ -50,7 +69,7 @@ export fn frame() void {
     // call simgui.render() inside a sokol-gfx pass
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sokol.glue.swapchain() });
 
-    scene.draw();
+    scene.draw(input_from_simgui());
 
     simgui.render();
 
