@@ -19,7 +19,7 @@ pub fn build(b: *std.Build) void {
     dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
 
     const exe = b.addExecutable(.{
-        .name = "zigwrap",
+        .name = "zig-sokol-sample",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,

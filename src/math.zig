@@ -69,7 +69,7 @@ pub const Vec3 = extern struct {
     }
 
     pub fn mul(v: Vec3, s: f32) Vec3 {
-        return Vec3{ .x = v.x * s, .y = v.y * s, .z = v.z * s };
+        return Vec3{ .x = v.x * s, .y = v.y * s, .z = v.z * s ,};
     }
 
     pub fn norm(v: Vec3) Vec3 {
