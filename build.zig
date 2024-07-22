@@ -1,5 +1,9 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const sokol = @import("sokol");
+
+const NAME = "zig-sokol-sample";
+const MAIN = "src/main.zig";
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -18,20 +22,72 @@ pub fn build(b: *std.Build) void {
     const cimgui_root = dep_cimgui.namedWriteFiles("cimgui").getDirectory();
     dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
 
-    //
-    // exe
-    //
+    // special case handling for native vs web build
+    const compile = if (target.result.isWasm())
+        buildWeb(b, target, optimize)
+    else
+        buildNative(b, target, optimize);
+
+    compile.root_module.addImport("sokol", dep_sokol.module("sokol"));
+    compile.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
+    // exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+    compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
+    b.installArtifact(compile);
+
+    if (target.result.isWasm()) {
+        // create a build step which invokes the Emscripten linker
+        const emsdk = dep_sokol.builder.dependency("emsdk", .{});
+        const link_step = try sokol.emLinkStep(b, .{
+            .lib_main = compile,
+            .target = target,
+            .optimize = optimize,
+            .emsdk = emsdk,
+            .use_webgl2 = true,
+            .use_emmalloc = true,
+            .use_filesystem = false,
+            .shell_file_path = dep_sokol.path("src/sokol/web/shell.html").getPath(b),
+        });
+        // ...and a special run step to start the web build output via 'emrun'
+        const run = sokol.emRunStep(b, .{ .name = NAME, .emsdk = emsdk });
+        run.step.dependOn(&link_step.step);
+        b.step("run", "Run sample").dependOn(&run.step);
+
+        const emsdk_incl_path = emsdk.path("upstream/emscripten/cache/sysroot/include");
+        dep_cimgui.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
+
+        // all C libraries need to depend on the sokol library, when building for
+        // WASM this makes sure that the Emscripten SDK has been setup before
+        // C compilation is attempted (since the sokol C library depends on the
+        // Emscripten SDK setup step)
+        dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
+    }
+}
+
+fn buildWeb(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Step.Compile {
+    const lib = b.addStaticLibrary(.{
+        .name = NAME,
+        .target = target,
+        .optimize = optimize,
+        .root_source_file = b.path(MAIN),
+    });
+    return lib;
+}
+
+fn buildNative(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Step.Compile {
     const exe = b.addExecutable(.{
-        .name = "zig-sokol-sample",
-        .root_source_file = b.path("src/main.zig"),
+        .name = NAME,
+        .root_source_file = b.path(MAIN),
         .target = target,
         .optimize = optimize,
     });
-    exe.root_module.addImport("sokol", dep_sokol.module("sokol"));
-    // exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
-    exe.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
-    exe.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
-    b.installArtifact(exe);
 
     //
     // run
@@ -52,6 +108,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/math.zig"),
     });
     b.step("test", "Run unit tests").dependOn(&b.addRunArtifact(unit_tests).step);
+
+    return exe;
 }
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/
