@@ -89,7 +89,7 @@ export fn frame() void {
     sg.endPass();
 
     //=== UI CODE STARTS HERE
-    // ig.igShowDemoWindow(null);
+    ig.igShowDemoWindow(null);
     {
         ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
         ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
