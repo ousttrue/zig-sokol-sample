@@ -21,6 +21,7 @@ pub fn build(b: *std.Build) void {
     // inject the cimgui header search path into the sokol C library compile step
     const cimgui_root = dep_cimgui.namedWriteFiles("cimgui").getDirectory();
     dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
+    dep_sokol.artifact("sokol_clib").addCSourceFile(.{ .file = b.path("deps/cimgui//custom_button_behaviour.cpp") });
 
     // special case handling for native vs web build
     const compile = if (target.result.isWasm())

@@ -13,7 +13,10 @@ const state = struct {
     var pass_action = sg.PassAction{};
     var camera = Camera{};
     var rendertarget: ?RenderTarget = null;
+    var offscreen_camera = Camera{};
 };
+
+extern fn Custom_ButtonBehaviorMiddleRight() void;
 
 pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
     if (state.rendertarget) |rendertarget| {
@@ -79,6 +82,8 @@ export fn frame() void {
     }
 
     {
+        ig.igSetNextWindowPos(.{ .x = 10, .y = 100 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+        ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
         ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
         defer ig.igPopStyleVar(1);
         var open_fbo = true;
@@ -91,17 +96,6 @@ export fn frame() void {
             ig.igGetContentRegionAvail(&size);
 
             if (size.x > 0 and size.y > 0) {
-                // if (fbo_view.camera.set_viewport_cursor(
-                //     pos.x,
-                //     pos.y,
-                //     size.x,
-                //     size.y,
-                //     cursor.x,
-                //     cursor.y,
-                // )) {
-                //     fbo_view.update_projection_matrix();
-                // }
-
                 if (get_or_create(@intFromFloat(size.x), @intFromFloat(size.y))) |rendertarget| {
                     _ = ig.igImageButton(
                         "fbo",
@@ -112,34 +106,13 @@ export fn frame() void {
                         .{ .x = 1, .y = 1, .z = 1, .w = 1 },
                         .{ .x = 1, .y = 1, .z = 1, .w = 1 },
                     );
-                    // Custom_ButtonBehaviorMiddleRight();
 
-                    // if (c.igIsItemActive()) {
-                    //     fbo_view.update(
-                    //         cursor_delta.x,
-                    //         cursor_delta.y,
-                    //         size.y,
-                    //     );
-                    // } else if (c.igIsItemHovered(0)) {
-                    //     if (wheel.y != 0) {
-                    //         fbo_view.camera_orbit.dolly(wheel.y);
-                    //         fbo_view.update_view_matrix();
-                    //     }
-                    // }
+                    Custom_ButtonBehaviorMiddleRight();
+                    state.offscreen_camera.update(InputState.from_rendertarget(pos, size));
 
                     sg.beginPass(rendertarget.pass);
-                    scene.draw(state.camera, .OffScreen);
+                    scene.draw(state.offscreen_camera, .OffScreen);
                     sg.endPass();
-
-                    // {
-                    //     fbo_view.begin_camera3D();
-                    //     defer fbo_view.end_camera3D();
-                    //
-                    //     draw_frustum(root_view.frustum());
-                    //     const start, const end = root_view.mouse_near_far();
-                    //     c.DrawLine3D(tor(start), tor(end), c.YELLOW);
-                    //     scene.draw();
-                    // }
                 }
             }
         }
