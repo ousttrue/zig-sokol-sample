@@ -1,3 +1,4 @@
+const std = @import("std");
 const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
@@ -6,13 +7,32 @@ const simgui = sokol.imgui;
 const scene = @import("teapot_scene.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
+const RenderTarget = @import("rendertarget.zig").RenderTarget;
 
 const state = struct {
-    var offscreen = sg.Pass{};
     var pass_action = sg.PassAction{};
     var camera = Camera{};
-    var color_img = simgui.Image{};
+    var rendertarget: ?RenderTarget = null;
 };
+
+pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
+    if (state.rendertarget) |rendertarget| {
+        if (rendertarget.width == width and rendertarget.height == height) {
+            return rendertarget;
+        }
+        // std.debug.print("destroy rendertarget\n", .{});
+        rendertarget.deinit();
+    }
+
+    // std.debug.print("creae rendertarget: {} x {}\n", .{ width, height });
+    const rendertarget = RenderTarget.init(width, height);
+    state.rendertarget = rendertarget;
+    return rendertarget;
+}
+
+// pub fn end_rendertarget() void {
+//     sg.endPass();
+// }
 
 export fn init() void {
     // initialize sokol-gfx
@@ -30,47 +50,11 @@ export fn init() void {
 
     scene.setup();
 
-    state.pass_action.colors[0] =
-        .{
+    state.pass_action.colors[0] = .{
         // initial clear color
         .load_action = .CLEAR,
         .clear_value = .{ .r = 0.0, .g = 0.5, .b = 1.0, .a = 1.0 },
     };
-
-    // setup a render pass struct with one color and one depth render attachment image
-    // NOTE: we need to explicitly set the sample count in the attachment image objects,
-    // because the offscreen pass uses a different sample count than the display render pass
-    // (the display render pass is multi-sampled, the offscreen pass is not)
-    const color_img = sg.makeImage(.{
-        .render_target = true,
-        .width = 256,
-        .height = 256,
-        .pixel_format = .RGBA8,
-        .sample_count = 1,
-        .label = "color-image",
-    });
-    const depth_img = sg.makeImage(.{
-        .render_target = true,
-        .width = 256,
-        .height = 256,
-        .pixel_format = .DEPTH,
-        .sample_count = 1,
-        .label = "depth-image",
-    });
-    var attachments_desc = sg.AttachmentsDesc{
-        .depth_stencil = .{ .image = depth_img },
-        .label = "offscreen-attachments",
-    };
-    attachments_desc.colors[0] = .{ .image = color_img };
-    state.offscreen.attachments = sg.makeAttachments(attachments_desc);
-    state.offscreen.action.colors[0] = .{
-        .load_action = .CLEAR,
-        .clear_value = .{ .r = 0.25, .g = 0.25, .b = 0.25, .a = 1.0 },
-    };
-    state.offscreen.label = "offscreen-pass";
-    state.color_img = simgui.makeImage(.{
-        .image = color_img,
-    });
 }
 
 export fn frame() void {
@@ -84,10 +68,6 @@ export fn frame() void {
     state.camera.update(InputState.from_imgui());
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
-    sg.beginPass(state.offscreen);
-    scene.draw(state.camera, .OffScreen);
-    sg.endPass();
-
     //=== UI CODE STARTS HERE
     ig.igShowDemoWindow(null);
     {
@@ -98,20 +78,73 @@ export fn frame() void {
         ig.igEnd();
     }
 
-    if (ig.igBegin("view", null, 0)) {
-        // const pos = ig.igGetCursorScreenPos();
-        var size: ig.ImVec2 = undefined;
-        ig.igGetContentRegionAvail(&size);
-        _ = ig.igImage(
-            simgui.imtextureid(state.color_img),
-            size,
-            .{ .x = 0, .y = 0 },
-            .{ .x = 1, .y = 1 },
-            .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-            .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-        );
+    {
+        ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
+        defer ig.igPopStyleVar(1);
+        var open_fbo = true;
+        if (ig.igBegin("fbo", &open_fbo, ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse)) {
+            ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_FramePadding, .{ .x = 0, .y = 0 });
+            defer ig.igPopStyleVar(1);
+            var pos = ig.ImVec2{};
+            ig.igGetCursorScreenPos(&pos);
+            var size = ig.ImVec2{};
+            ig.igGetContentRegionAvail(&size);
+
+            if (size.x > 0 and size.y > 0) {
+                // if (fbo_view.camera.set_viewport_cursor(
+                //     pos.x,
+                //     pos.y,
+                //     size.x,
+                //     size.y,
+                //     cursor.x,
+                //     cursor.y,
+                // )) {
+                //     fbo_view.update_projection_matrix();
+                // }
+
+                if (get_or_create(@intFromFloat(size.x), @intFromFloat(size.y))) |rendertarget| {
+                    _ = ig.igImageButton(
+                        "fbo",
+                        simgui.imtextureid(rendertarget.image),
+                        size,
+                        .{ .x = 0, .y = 0 },
+                        .{ .x = 1, .y = 1 },
+                        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
+                        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
+                    );
+                    // Custom_ButtonBehaviorMiddleRight();
+
+                    // if (c.igIsItemActive()) {
+                    //     fbo_view.update(
+                    //         cursor_delta.x,
+                    //         cursor_delta.y,
+                    //         size.y,
+                    //     );
+                    // } else if (c.igIsItemHovered(0)) {
+                    //     if (wheel.y != 0) {
+                    //         fbo_view.camera_orbit.dolly(wheel.y);
+                    //         fbo_view.update_view_matrix();
+                    //     }
+                    // }
+
+                    sg.beginPass(rendertarget.pass);
+                    scene.draw(state.camera, .OffScreen);
+                    sg.endPass();
+
+                    // {
+                    //     fbo_view.begin_camera3D();
+                    //     defer fbo_view.end_camera3D();
+                    //
+                    //     draw_frustum(root_view.frustum());
+                    //     const start, const end = root_view.mouse_near_far();
+                    //     c.DrawLine3D(tor(start), tor(end), c.YELLOW);
+                    //     scene.draw();
+                    // }
+                }
+            }
+        }
+        ig.igEnd();
     }
-    ig.igEnd();
     //=== UI CODE ENDS HERE
 
     // call simgui.render() inside a sokol-gfx pass
