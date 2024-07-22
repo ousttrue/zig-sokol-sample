@@ -1,3 +1,4 @@
+const std = @import("std");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const rowmath = @import("rowmath.zig");
@@ -7,23 +8,8 @@ const Quat = rowmath.Quat;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
 const InputState = @import("input_state.zig").InputState;
-
-const Camera = struct {
-    yfov: f32 = 0,
-    near_clip: f32 = 0,
-    far_clip: f32 = 0,
-    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    pitch: f32 = 0,
-    yaw: f32 = 0,
-    fn get_orientation(self: @This()) Quat {
-        return Quat.axisAngle(.{ .x = 0, .y = 1, .z = 0 }, self.yaw).mul(Quat.axisAngle(.{ .x = 1, .y = 0, .z = 0 }, self.pitch));
-    }
-    fn get_view_matrix(self: @This()) Mat4 {
-        return self.get_orientation().conj().matrix().mul(Mat4.translate(self.position.negate()));
-    }
-    // linalg::aliases::float4x4 get_projection_matrix(const float aspectRatio) const { return linalg::perspective_matrix(yfov, aspectRatio, near_clip, far_clip); }
-    // linalg::aliases::float4x4 get_viewproj_matrix(const float aspectRatio) const { return mul(get_projection_matrix(aspectRatio), get_view_matrix()); }
-};
+const Camera = @import("camera.zig").Camera;
+const linegeom = @import("linegeom.zig");
 
 const RigidTransform = struct {
     // rigid_transform() {}
@@ -48,20 +34,11 @@ const RigidTransform = struct {
 const state = struct {
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
-    var camera = Camera{};
     var xform_a = RigidTransform{};
     var xform_b = RigidTransform{};
-    var input = InputState{};
 };
 
 pub fn setup() void {
-    state.camera = .{
-        .yfov = 1.0,
-        .near_clip = 0.01,
-        .far_clip = 32.0,
-        .position = .{ .x = 0, .y = 1.5, .z = 4 },
-    };
-
     state.xform_a.position.x = -2;
     state.xform_b.position.x = 2;
 
@@ -95,51 +72,42 @@ fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
-fn computeVsParams(model: Mat4) shd.VsParams {
-    const aspect = sokol.app.widthf() / sokol.app.heightf();
-    const proj = Mat4.persp(60.0, aspect, 0.01, 10.0);
-    const view = state.camera.get_view_matrix();
-    return shd.VsParams{
-        .u_viewProj = mat4_to_array(&view.mul(proj)).*,
-        .u_modelMatrix = mat4_to_array(&model).*,
-    };
-}
+pub fn draw(camera: Camera) void {
+    const viewProj = camera.view.mul(camera.projection);
 
-pub fn draw(input_state: InputState) void {
-    if (input_state.mouse_right) {
-        const dx = input_state.mouse_x - state.input.mouse_x;
-        const dy = input_state.mouse_y - state.input.mouse_y;
-        state.camera.yaw -= dx * 0.01;
-        state.camera.pitch -= dy * 0.01;
-    }
-    if (input_state.mouse_wheel > 0) {
-        state.camera.position.z *= 0.9;
-    } else if (input_state.mouse_wheel < 0) {
-        state.camera.position.z *= 1.1;
-    }
-    state.input = input_state;
+    // grid
+    linegeom.begin(camera);
+    linegeom.grid();
+    linegeom.end();
 
+    // teapot
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
 
     const fsParams = shd.FsParams{
         .u_diffuse = .{ 1, 1, 1 },
         .u_eye = .{
-            state.camera.position.x,
-            state.camera.position.y,
-            state.camera.position.z,
+            camera.position.x,
+            camera.position.y,
+            camera.position.z,
         },
     };
 
     {
-        const vsParams = computeVsParams(state.xform_a.matrix());
+        const vsParams = shd.VsParams{
+            .u_viewProj = mat4_to_array(&viewProj).*,
+            .u_modelMatrix = mat4_to_array(&state.xform_a.matrix()).*,
+        };
         sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vsParams));
         sg.applyUniforms(.FS, shd.SLOT_fs_params, sg.asRange(&fsParams));
         sg.draw(0, geometry.teapot_triangles.len, 1);
     }
 
     {
-        const vsParams = computeVsParams(state.xform_b.matrix());
+        const vsParams = shd.VsParams{
+            .u_viewProj = mat4_to_array(&viewProj).*,
+            .u_modelMatrix = mat4_to_array(&state.xform_b.matrix()).*,
+        };
         sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vsParams));
         sg.applyUniforms(.FS, shd.SLOT_fs_params, sg.asRange(&fsParams));
         sg.draw(0, geometry.teapot_triangles.len, 1);

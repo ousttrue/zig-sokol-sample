@@ -5,6 +5,8 @@ const Vec3 = rowmath.Vec3;
 const Mat4 = rowmath.Mat4;
 const shd = @import("cube.glsl.zig");
 const InputState = @import("input_state.zig").InputState;
+const Camera = @import("camera.zig").Camera;
+const linegeom = @import("linegeom.zig");
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
@@ -12,11 +14,6 @@ const state = struct {
     var ry: f32 = 0.0;
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
-    const view: Mat4 = Mat4.lookat(
-        .{ .x = 0.0, .y = 1.5, .z = 6.0 },
-        Vec3.zero(),
-        Vec3.up(),
-    );
 };
 
 pub fn setup() void {
@@ -88,24 +85,25 @@ fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
-fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
+fn computeVsParams(rx: f32, ry: f32, camera: Camera) shd.VsParams {
     const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
     const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = Mat4.mul(rxm, rym);
-    const aspect = sokol.app.widthf() / sokol.app.heightf();
-    const proj = Mat4.persp(60.0, aspect, 0.01, 10.0);
-    return shd.VsParams{ .mvp = mat4_to_array(&Mat4.mul(model, Mat4.mul(state.view, proj))).* };
+    return shd.VsParams{ .mvp = mat4_to_array(&model.mul(camera.view.mul(camera.projection))).* };
 }
 
-pub fn draw(input_state: InputState) void {
-    _ = input_state; // autofix
+pub fn draw(camera: Camera) void {
+
+    // grid
+    linegeom.begin(camera);
+    linegeom.grid();
+    linegeom.end();
+
     // cube
     const dt: f32 = @floatCast(sokol.app.frameDuration() * 60);
     state.rx += 1.0 * dt;
     state.ry += 2.0 * dt;
-    const vs_params = computeVsParams(state.rx, state.ry);
-
-    // cube
+    const vs_params = computeVsParams(state.rx, state.ry, camera);
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
     sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vs_params));

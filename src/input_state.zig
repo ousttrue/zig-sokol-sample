@@ -10,6 +10,10 @@ pub const InputState = struct {
     mouse_y: f32 = 0,
     mouse_wheel: f32 = 0,
 
+    pub fn aspect(self: @This()) f32 {
+        return self.screen_width / self.screen_height;
+    }
+
     pub fn from_imgui() @This() {
         const io = ig.igGetIO().*;
         var input = InputState{

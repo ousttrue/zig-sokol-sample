@@ -2,12 +2,19 @@ const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const simgui = sokol.imgui;
-// const scene = @import("cube_scene.zig");
-const scene = @import("teapot_scene.zig");
+const scene = @import("cube_scene.zig");
+// const scene = @import("teapot_scene.zig");
 const InputState = @import("input_state.zig").InputState;
+const Camera = @import("camera.zig").Camera;
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
+    var camera = Camera{
+        .yfov = 1.0,
+        .near_clip = 0.01,
+        .far_clip = 32.0,
+        .position = .{ .x = 0, .y = 1.5, .z = 4 },
+    };
 };
 
 export fn init() void {
@@ -18,6 +25,9 @@ export fn init() void {
     });
     // initialize sokol-imgui
     simgui.setup(.{
+        .logger = .{ .func = sokol.log.func },
+    });
+    sokol.gl.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
 
@@ -38,6 +48,7 @@ export fn frame() void {
         .delta_time = sokol.app.frameDuration(),
         .dpi_scale = sokol.app.dpiScale(),
     });
+    state.camera.update(InputState.from_imgui());
 
     //=== UI CODE STARTS HERE
     // ig.igShowDemoWindow(null);
@@ -51,7 +62,7 @@ export fn frame() void {
     // call simgui.render() inside a sokol-gfx pass
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sokol.glue.swapchain() });
 
-    scene.draw(InputState.from_imgui());
+    scene.draw(state.camera);
 
     simgui.render();
 
@@ -61,6 +72,7 @@ export fn frame() void {
 
 export fn cleanup() void {
     simgui.shutdown();
+    sokol.gl.shutdown();
     sg.shutdown();
 }
 
