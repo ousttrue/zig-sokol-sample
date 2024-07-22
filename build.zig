@@ -25,7 +25,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("sokol", dep_sokol.module("sokol"));
-    exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+    // exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+    exe.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
     exe.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     b.installArtifact(exe);
 

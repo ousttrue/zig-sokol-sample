@@ -2,7 +2,8 @@ const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const simgui = sokol.imgui;
-const scene = @import("scene.zig");
+// const scene = @import("scene.zig");
+const scene = @import("teapot_scene.zig");
 
 const state = struct {
     var pass_action: sg.PassAction = .{};

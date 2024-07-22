@@ -6,6 +6,7 @@
 //
 //  Ported from HandmadeMath.h
 //------------------------------------------------------------------------------
+const std = @import("std");
 const assert = @import("std").debug.assert;
 const math = @import("std").math;
 
@@ -43,8 +44,20 @@ pub const Vec3 = extern struct {
         return Vec3{ .x = 0.0, .y = 1.0, .z = 0.0 };
     }
 
+    pub fn negate(v: Vec3) Vec3 {
+        return .{
+            .x = -v.x,
+            .y = -v.y,
+            .z = -v.z,
+        };
+    }
+
     pub fn len(v: Vec3) f32 {
         return math.sqrt(Vec3.dot(v, v));
+    }
+
+    pub fn scale(self: @This(), s: f32) @This() {
+        return .{ .x = self.x * s, .y = self.y * s, .z = self.z };
     }
 
     pub fn add(left: Vec3, right: Vec3) Vec3 {
@@ -77,6 +90,10 @@ pub const Vec3 = extern struct {
     }
 };
 
+fn f4(v: Vec3, w: f32) [4]f32 {
+    return .{ v.x, v.y, v.z, w };
+}
+
 pub const Mat4 = extern struct {
     m: [4][4]f32,
 
@@ -90,6 +107,15 @@ pub const Mat4 = extern struct {
         return Mat4{
             .m = [_][4]f32{ .{ 0.0, 0.0, 0.0, 0.0 }, .{ 0.0, 0.0, 0.0, 0.0 }, .{ 0.0, 0.0, 0.0, 0.0 }, .{ 0.0, 0.0, 0.0, 0.0 } },
         };
+    }
+
+    pub fn trs(t: Vec3, r: Quat, s: Vec3) Mat4 {
+        return .{ .m = .{
+            f4(r.dirX().scale(s.x), 0),
+            f4(r.dirY().scale(s.y), 0),
+            f4(r.dirZ().scale(s.z), 0),
+            .{ t.x, t.y, t.z, 1 },
+        } };
     }
 
     pub fn mul(left: Mat4, right: Mat4) Mat4 {
@@ -290,3 +316,71 @@ test "Mat4.rotate" {
     assert(eq(m.m[3][2], 0.0));
     assert(eq(m.m[3][3], 1.0));
 }
+
+pub const Quat = struct {
+    x: f32,
+    y: f32,
+    z: f32,
+    w: f32,
+
+    pub fn axisAngle(axis: Vec3, angle: f32) Quat {
+        const s = std.math.sin(angle / 2);
+        return .{
+            .x = axis.x * s,
+            .y = axis.y * s,
+            .z = axis.z * s,
+            .w = std.math.cos(angle / 2),
+        };
+    }
+
+    pub fn conj(q: @This()) @This() {
+        return .{
+            .x = -q.x,
+            .y = -q.y,
+            .z = -q.z,
+            .w = q.w,
+        };
+    }
+
+    pub fn mul(a: @This(), b: @This()) @This() {
+        return .{
+            .x = a.x * b.w + a.w * b.x + a.y * b.z - a.z * b.y,
+            .y = a.y * b.w + a.w * b.y + a.z * b.x - a.x * b.z,
+            .z = a.z * b.w + a.w * b.z + a.x * b.y - a.y * b.x,
+            .w = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+        };
+    }
+
+    fn dirX(q: @This()) Vec3 {
+        return .{
+            .x = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
+            .y = (q.x * q.y + q.z * q.w) * 2,
+            .z = (q.z * q.x - q.y * q.w) * 2,
+        };
+    }
+
+    fn dirY(q: @This()) Vec3 {
+        return .{
+            .x = (q.x * q.y - q.z * q.w) * 2,
+            .y = q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
+            .z = (q.y * q.z + q.x * q.w) * 2,
+        };
+    }
+
+    fn dirZ(q: @This()) Vec3 {
+        return .{
+            .x = (q.z * q.x + q.y * q.w) * 2,
+            .y = (q.y * q.z - q.x * q.w) * 2,
+            .z = q.w * q.w - q.x * q.x - q.y * q.y + q.z * q.z,
+        };
+    }
+
+    pub fn matrix(q: @This()) Mat4 {
+        return .{ .m = .{
+            f4(q.dirX(), 0),
+            f4(q.dirY(), 0),
+            f4(q.dirZ(), 0),
+            .{ 0, 0, 0, 1 },
+        } };
+    }
+};
