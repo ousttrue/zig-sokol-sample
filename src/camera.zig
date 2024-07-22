@@ -6,6 +6,11 @@ const Mat4 = rowmath.Mat4;
 const RigidTransform = rowmath.RigidTransform;
 const InputState = @import("input_state.zig").InputState;
 
+pub const RenderTarget = enum {
+    Display,
+    OffScreen,
+};
+
 pub const Camera = struct {
     // mouse
     input_state: InputState = .{},

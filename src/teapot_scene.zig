@@ -9,6 +9,7 @@ const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
+const RenderTarget = @import("camera.zig").RenderTarget;
 const linegeom = @import("linegeom.zig");
 
 const RigidTransform = struct {
@@ -36,6 +37,8 @@ const state = struct {
     var bind: sg.Bindings = .{};
     var xform_a = RigidTransform{};
     var xform_b = RigidTransform{};
+
+    var offscreen_pip: sg.Pipeline = .{};
 };
 
 pub fn setup() void {
@@ -66,22 +69,36 @@ pub fn setup() void {
     pip_desc.layout.attrs[shd.ATTR_vs_inPosition].format = .FLOAT3;
     pip_desc.layout.attrs[shd.ATTR_vs_inNormal].format = .FLOAT3;
     state.pip = sg.makePipeline(pip_desc);
+
+    // offscreen_pip
+    pip_desc.colors[0].pixel_format = .RGBA8;
+    pip_desc.sample_count = 1;
+    pip_desc.depth = .{
+        .pixel_format = .DEPTH,
+        .compare = .LESS_EQUAL,
+        .write_enabled = true,
+    };
+    state.offscreen_pip = sg.makePipeline(pip_desc);
 }
 
 fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
-pub fn draw(camera: Camera) void {
+pub fn draw(camera: Camera, renderTarget: RenderTarget) void {
     const viewProj = camera.transform.worldToLocal().mul(camera.projection);
 
-    // grid
-    linegeom.begin(camera);
-    linegeom.grid();
-    linegeom.end();
-
     // teapot
-    sg.applyPipeline(state.pip);
+    switch (renderTarget) {
+        .Display => {
+            // grid
+            linegeom.begin(camera);
+            linegeom.grid();
+            linegeom.end();
+            sg.applyPipeline(state.pip);
+        },
+        .OffScreen => sg.applyPipeline(state.offscreen_pip),
+    }
     sg.applyBindings(state.bind);
 
     const fsParams = shd.FsParams{
