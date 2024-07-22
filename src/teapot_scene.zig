@@ -6,17 +6,7 @@ const Vec3 = rowmath.Vec3;
 const Quat = rowmath.Quat;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
-
-pub const InputState = struct {
-    screen_width: f32 = 0,
-    screen_height: f32 = 0,
-    mouse_left: bool = false,
-    mouse_right: bool = false,
-    mouse_middle: bool = false,
-    mouse_x: f32 = 0,
-    mouse_y: f32 = 0,
-    mouse_wheel: f32 = 0,
-};
+const InputState = @import("input_state.zig").InputState;
 
 const Camera = struct {
     yfov: f32 = 0,

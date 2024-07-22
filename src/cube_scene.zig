@@ -1,8 +1,10 @@
 const sokol = @import("sokol");
 const sg = sokol.gfx;
-const vec3 = @import("math.zig").Vec3;
-const mat4 = @import("math.zig").Mat4;
+const rowmath = @import("rowmath.zig");
+const Vec3 = rowmath.Vec3;
+const Mat4 = rowmath.Mat4;
 const shd = @import("cube.glsl.zig");
+const InputState = @import("input_state.zig").InputState;
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
@@ -10,7 +12,11 @@ const state = struct {
     var ry: f32 = 0.0;
     var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
-    const view: mat4 = mat4.lookat(.{ .x = 0.0, .y = 1.5, .z = 6.0 }, vec3.zero(), vec3.up());
+    const view: Mat4 = Mat4.lookat(
+        .{ .x = 0.0, .y = 1.5, .z = 6.0 },
+        Vec3.zero(),
+        Vec3.up(),
+    );
 };
 
 pub fn setup() void {
@@ -78,20 +84,21 @@ pub fn setup() void {
     state.pip = sg.makePipeline(pip_desc);
 }
 
-fn mat4_to_array(m: *const mat4) *const [16]f32 {
+fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
 fn computeVsParams(rx: f32, ry: f32) shd.VsParams {
-    const rxm = mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
-    const model = mat4.mul(rxm, rym);
+    const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const model = Mat4.mul(rxm, rym);
     const aspect = sokol.app.widthf() / sokol.app.heightf();
-    const proj = mat4.persp(60.0, aspect, 0.01, 10.0);
-    return shd.VsParams{ .mvp = mat4_to_array(&mat4.mul(mat4.mul(proj, state.view), model)).* };
+    const proj = Mat4.persp(60.0, aspect, 0.01, 10.0);
+    return shd.VsParams{ .mvp = mat4_to_array(&Mat4.mul(model, Mat4.mul(state.view, proj))).* };
 }
 
-pub fn draw() void {
+pub fn draw(input_state: InputState) void {
+    _ = input_state; // autofix
     // cube
     const dt: f32 = @floatCast(sokol.app.frameDuration() * 60);
     state.rx += 1.0 * dt;

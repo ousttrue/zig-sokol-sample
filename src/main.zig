@@ -2,8 +2,9 @@ const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const simgui = sokol.imgui;
-// const scene = @import("scene.zig");
+// const scene = @import("cube_scene.zig");
 const scene = @import("teapot_scene.zig");
+const InputState = @import("input_state.zig").InputState;
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
@@ -29,25 +30,6 @@ export fn init() void {
     };
 }
 
-fn input_from_simgui() scene.InputState {
-    const io = ig.igGetIO().*;
-    var input = scene.InputState{
-        .screen_width = io.DisplaySize.x,
-        .screen_height = io.DisplaySize.y,
-        .mouse_x = io.MousePos.x,
-        .mouse_y = io.MousePos.y,
-    };
-
-    if (!io.WantCaptureMouse) {
-        input.mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left];
-        input.mouse_right = io.MouseDown[ig.ImGuiMouseButton_Right];
-        input.mouse_middle = io.MouseDown[ig.ImGuiMouseButton_Middle];
-        input.mouse_wheel = io.MouseWheel;
-    }
-
-    return input;
-}
-
 export fn frame() void {
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
@@ -58,7 +40,7 @@ export fn frame() void {
     });
 
     //=== UI CODE STARTS HERE
-    ig.igShowDemoWindow(null);
+    // ig.igShowDemoWindow(null);
     ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
     ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
     _ = ig.igBegin("Hello Dear ImGui!", 0, ig.ImGuiWindowFlags_None);
@@ -69,7 +51,7 @@ export fn frame() void {
     // call simgui.render() inside a sokol-gfx pass
     sg.beginPass(.{ .action = state.pass_action, .swapchain = sokol.glue.swapchain() });
 
-    scene.draw(input_from_simgui());
+    scene.draw(InputState.from_imgui());
 
     simgui.render();
 
