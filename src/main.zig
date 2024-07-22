@@ -2,19 +2,14 @@ const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const simgui = sokol.imgui;
-const scene = @import("cube_scene.zig");
-// const scene = @import("teapot_scene.zig");
+// const scene = @import("cube_scene.zig");
+const scene = @import("teapot_scene.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
-    var camera = Camera{
-        .yfov = 1.0,
-        .near_clip = 0.01,
-        .far_clip = 32.0,
-        .position = .{ .x = 0, .y = 1.5, .z = 4 },
-    };
+    var camera = Camera{};
 };
 
 export fn init() void {

@@ -6,7 +6,7 @@ pub fn begin(camera: Camera) void {
     sokol.gl.matrixModeProjection();
     sokol.gl.sgl_mult_matrix(&camera.projection.m[0]);
     sokol.gl.matrixModeModelview();
-    sokol.gl.sgl_mult_matrix(&camera.view.m[0]);
+    sokol.gl.sgl_mult_matrix(&camera.transform.worldToLocal().m[0]);
 }
 
 pub fn end() void {

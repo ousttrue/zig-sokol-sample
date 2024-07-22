@@ -73,7 +73,7 @@ fn mat4_to_array(m: *const Mat4) *const [16]f32 {
 }
 
 pub fn draw(camera: Camera) void {
-    const viewProj = camera.view.mul(camera.projection);
+    const viewProj = camera.transform.worldToLocal().mul(camera.projection);
 
     // grid
     linegeom.begin(camera);
@@ -87,9 +87,9 @@ pub fn draw(camera: Camera) void {
     const fsParams = shd.FsParams{
         .u_diffuse = .{ 1, 1, 1 },
         .u_eye = .{
-            camera.position.x,
-            camera.position.y,
-            camera.position.z,
+            camera.transform.translation.x,
+            camera.transform.translation.y,
+            camera.transform.translation.z,
         },
     };
 

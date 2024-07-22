@@ -89,7 +89,8 @@ fn computeVsParams(rx: f32, ry: f32, camera: Camera) shd.VsParams {
     const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
     const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = Mat4.mul(rxm, rym);
-    return shd.VsParams{ .mvp = mat4_to_array(&model.mul(camera.view.mul(camera.projection))).* };
+    const view = camera.transform.worldToLocal();
+    return shd.VsParams{ .mvp = mat4_to_array(&model.mul(view.mul(camera.projection))).* };
 }
 
 pub fn draw(camera: Camera) void {
