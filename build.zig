@@ -18,6 +18,9 @@ pub fn build(b: *std.Build) void {
     const cimgui_root = dep_cimgui.namedWriteFiles("cimgui").getDirectory();
     dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
 
+    //
+    // exe
+    //
     const exe = b.addExecutable(.{
         .name = "zig-sokol-sample",
         .root_source_file = b.path("src/main.zig"),
@@ -30,12 +33,25 @@ pub fn build(b: *std.Build) void {
     exe.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     b.installArtifact(exe);
 
+    //
+    // run
+    //
     const run_cmd = b.addRunArtifact(exe);
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
     b.step("run", "Run the app").dependOn(&run_cmd.step);
+
+    //
+    // test
+    //
+    const unit_tests = b.addTest(.{
+        .target = target,
+        .optimize = optimize,
+        .root_source_file = b.path("src/math.zig"),
+    });
+    b.step("test", "Run unit tests").dependOn(&b.addRunArtifact(unit_tests).step);
 }
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/

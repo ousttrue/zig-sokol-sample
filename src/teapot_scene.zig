@@ -1,8 +1,9 @@
 const sokol = @import("sokol");
 const sg = sokol.gfx;
-const vec3 = @import("math.zig").Vec3;
-const mat4 = @import("math.zig").Mat4;
-const quat = @import("math.zig").Quat;
+const rowmath = @import("rowmath.zig");
+const Mat4 = rowmath.Mat4;
+const Vec3 = rowmath.Vec3;
+const Quat = rowmath.Quat;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
 
@@ -21,14 +22,14 @@ const Camera = struct {
     yfov: f32 = 0,
     near_clip: f32 = 0,
     far_clip: f32 = 0,
-    position: vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     pitch: f32 = 0,
     yaw: f32 = 0,
-    fn get_orientation(self: @This()) quat {
-        return quat.axisAngle(.{ .x = 0, .y = 1, .z = 0 }, self.yaw).mul(quat.axisAngle(.{ .x = 1, .y = 0, .z = 0 }, self.pitch));
+    fn get_orientation(self: @This()) Quat {
+        return Quat.axisAngle(.{ .x = 0, .y = 1, .z = 0 }, self.yaw).mul(Quat.axisAngle(.{ .x = 1, .y = 0, .z = 0 }, self.pitch));
     }
-    fn get_view_matrix(self: @This()) mat4 {
-        return self.get_orientation().conj().matrix().mul(mat4.translate(self.position.negate()));
+    fn get_view_matrix(self: @This()) Mat4 {
+        return self.get_orientation().conj().matrix().mul(Mat4.translate(self.position.negate()));
     }
     // linalg::aliases::float4x4 get_projection_matrix(const float aspectRatio) const { return linalg::perspective_matrix(yfov, aspectRatio, near_clip, far_clip); }
     // linalg::aliases::float4x4 get_viewproj_matrix(const float aspectRatio) const { return mul(get_projection_matrix(aspectRatio), get_view_matrix()); }
@@ -40,13 +41,13 @@ const RigidTransform = struct {
     // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position, float scale) : orientation(orientation), position(position), scale(scale) {}
     // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position) : orientation(orientation), position(position) {}
 
-    position: vec3 = vec3{ .x = 0, .y = 0, .z = 0 },
-    orientation: quat = quat{ .x = 0, .y = 0, .z = 0, .w = 1 },
-    scale: vec3 = vec3{ .x = 1, .y = 1, .z = 1 },
+    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
+    scale: Vec3 = .{ .x = 1, .y = 1, .z = 1 },
 
     // bool                uniform_scale() const { return scale.x == scale.y && scale.x == scale.z; }
-    fn matrix(self: @This()) mat4 {
-        return mat4.trs(self.position, self.orientation, self.scale);
+    fn matrix(self: @This()) Mat4 {
+        return Mat4.trs(self.position, self.orientation, self.scale);
     }
     // minalg::float3      transform_vector(const minalg::float3 & vec) const { return qrot(orientation, vec * scale); }
     // minalg::float3      transform_point(const minalg::float3 & p) const { return position + transform_vector(p); }
@@ -100,15 +101,16 @@ pub fn setup() void {
     state.pip = sg.makePipeline(pip_desc);
 }
 
-fn mat4_to_array(m: *const mat4) *const [16]f32 {
+fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
-fn computeVsParams(model: mat4) shd.VsParams {
+fn computeVsParams(model: Mat4) shd.VsParams {
     const aspect = sokol.app.widthf() / sokol.app.heightf();
-    const proj = mat4.persp(60.0, aspect, 0.01, 10.0);
+    const proj = Mat4.persp(60.0, aspect, 0.01, 10.0);
+    const view = state.camera.get_view_matrix();
     return shd.VsParams{
-        .u_viewProj = mat4_to_array(&mat4.mul(proj, state.camera.get_view_matrix())).*,
+        .u_viewProj = mat4_to_array(&view.mul(proj)).*,
         .u_modelMatrix = mat4_to_array(&model).*,
     };
 }
