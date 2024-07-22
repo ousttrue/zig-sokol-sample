@@ -32,7 +32,7 @@ jobs:
       - name: clone sokol tools
         run: |
           git clone https://github.com/floooh/sokol-tools-bin.git
-          sokol-tools-bin/linux/sokol-shdc -i src/teapot.glsl -o src/teapot.glsl.zig -l glsl430:metal_macos:hlsl5:glsl300es:wgsl -f sokol_zig
+          sokol-tools-bin/bin/linux/sokol-shdc -i src/teapot.glsl -o src/teapot.glsl.zig -l glsl430:metal_macos:hlsl5:glsl300es:wgsl -f sokol_zig
       - name: build Wasm
         run: |
           zig build --summary all -Dtarget=wasm32-emscripten
