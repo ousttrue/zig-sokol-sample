@@ -30,8 +30,6 @@ pub fn build(b: *std.Build) void {
 
     compile.root_module.addImport("sokol", dep_sokol.module("sokol"));
     compile.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
-    // exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
-    compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
     b.installArtifact(compile);
 
     if (target.result.isWasm()) {
@@ -60,6 +58,8 @@ pub fn build(b: *std.Build) void {
         // C compilation is attempted (since the sokol C library depends on the
         // Emscripten SDK setup step)
         dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
+    } else {
+        compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
     }
 }
 
