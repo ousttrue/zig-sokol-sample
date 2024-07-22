@@ -8,7 +8,15 @@ pub fn build(b: *std.Build) void {
     const dep_sokol = b.dependency("sokol", .{
         .target = target,
         .optimize = optimize,
+        .with_sokol_imgui = true,
     });
+    const dep_cimgui = b.dependency("cimgui", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    // inject the cimgui header search path into the sokol C library compile step
+    const cimgui_root = dep_cimgui.namedWriteFiles("cimgui").getDirectory();
+    dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
 
     const exe = b.addExecutable(.{
         .name = "zigwrap",
@@ -17,7 +25,8 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     exe.root_module.addImport("sokol", dep_sokol.module("sokol"));
-    exe.step.dependOn(buildShaders(b, target, "src/cube.glsl"));
+    exe.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+    exe.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -29,8 +38,7 @@ pub fn build(b: *std.Build) void {
 }
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/
-// TODO: install sokol-shdc via package manager
-fn buildShaders(
+fn buildShader(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     comptime shader: []const u8,
