@@ -26,6 +26,7 @@ const RenderView = struct {
             .{},
         },
     },
+    sgl_ctx: sokol.gl.Context = .{},
 
     fn update(self: *@This(), input: InputState) void {
         self.camera.update(input);
@@ -34,26 +35,29 @@ const RenderView = struct {
     fn begin(self: *@This(), _rendertarget: ?RenderTarget) void {
         if (_rendertarget) |rendertarget| {
             sg.beginPass(rendertarget.pass);
+            sokol.gl.setContext(self.sgl_ctx);
         } else {
-            sokol.gl.defaults();
-            sokol.gl.matrixModeProjection();
-            sokol.gl.sgl_mult_matrix(&self.camera.projection.m[0]);
-            sokol.gl.matrixModeModelview();
-            sokol.gl.sgl_mult_matrix(&self.camera.transform.worldToLocal().m[0]);
-
             sg.beginPass(.{
                 .action = self.pass_action,
                 .swapchain = sokol.glue.swapchain(),
             });
+            sokol.gl.setContext(sokol.gl.defaultContext());
         }
     }
 
-    fn end(_: *@This(), _rendertarget: ?RenderTarget) void {
+    fn end(self: *@This(), _rendertarget: ?RenderTarget) void {
+        sokol.gl.defaults();
+        sokol.gl.matrixModeProjection();
+        sokol.gl.sgl_mult_matrix(&self.camera.projection.m[0]);
+        sokol.gl.matrixModeModelview();
+        sokol.gl.sgl_mult_matrix(&self.camera.transform.worldToLocal().m[0]);
+        linegeom.grid();
+
         if (_rendertarget) |_| {
-            //
+            sokol.gl.contextDraw(self.sgl_ctx);
         } else {
+            sokol.gl.contextDraw(sokol.gl.defaultContext());
             simgui.render();
-            sokol.gl.draw();
         }
         sg.endPass();
     }
@@ -101,6 +105,16 @@ export fn init() void {
     });
 
     scene.setup();
+
+    // create a sokol-gl context compatible with the offscreen render pass
+    // (specific color pixel format, no depth-stencil-surface, no MSAA)
+    state.offscreen.sgl_ctx = sokol.gl.makeContext(.{
+        .max_vertices = 65535,
+        .max_commands = 65535,
+        .color_format = .RGBA8,
+        .depth_format = .DEPTH,
+        .sample_count = 1,
+    });
 }
 
 export fn frame() void {
@@ -153,6 +167,7 @@ export fn frame() void {
                     Custom_ButtonBehaviorMiddleRight();
                     state.offscreen.update(InputState.from_rendertarget(pos, size));
                     {
+                        // render offscreen
                         state.offscreen.begin(rendertarget);
                         defer state.offscreen.end(rendertarget);
                         scene.draw(state.offscreen.camera, .OffScreen);
@@ -164,12 +179,11 @@ export fn frame() void {
     }
     //=== UI CODE ENDS HERE
 
-    // call simgui.render() inside a sokol-gfx pass
     {
+        // render background
         state.display.begin(null);
         defer state.display.end(null);
-        scene.draw(state.offscreen.camera, .Display);
-        linegeom.grid();
+        scene.draw(state.display.camera, .Display);
     }
     sg.commit();
 }
