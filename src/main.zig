@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const ig = @import("cimgui");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
@@ -101,8 +102,8 @@ export fn frame() void {
                         "fbo",
                         simgui.imtextureid(rendertarget.image),
                         size,
-                        .{ .x = 0, .y = 0 },
-                        .{ .x = 1, .y = 1 },
+                        .{ .x = 0, .y = if (builtin.os.tag == .emscripten) 1 else 0 },
+                        .{ .x = 1, .y = if (builtin.os.tag == .emscripten) 0 else 1 },
                         .{ .x = 1, .y = 1, .z = 1, .w = 1 },
                         .{ .x = 1, .y = 1, .z = 1, .w = 1 },
                     );
