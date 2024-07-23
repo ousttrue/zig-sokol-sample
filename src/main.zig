@@ -10,6 +10,7 @@ const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("rendertarget.zig").RenderTarget;
 const linegeom = @import("linegeom.zig");
+const tinygizmo = @import("tinygizmo.zig");
 
 const RenderView = struct {
     camera: Camera = Camera{},
@@ -64,9 +65,11 @@ const RenderView = struct {
 };
 
 const state = struct {
+    var allocator: std.mem.Allocator = undefined;
     var display = RenderView{};
     var offscreen = RenderView{};
     var rendertarget: ?RenderTarget = null;
+    var gizmo_ctx: tinygizmo.Context = undefined;
 };
 
 extern fn Custom_ButtonBehaviorMiddleRight() void;
@@ -91,6 +94,9 @@ pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
 // }
 
 export fn init() void {
+    state.allocator = std.heap.page_allocator;
+    state.gizmo_ctx = tinygizmo.Context.init(state.allocator);
+
     // initialize sokol-gfx
     sg.setup(.{
         .environment = sokol.glue.environment(),
@@ -118,6 +124,17 @@ export fn init() void {
 }
 
 export fn frame() void {
+    const gizmo_state = tinygizmo.ApplicationState{};
+    state.gizmo_ctx.update(gizmo_state);
+    // if (transform_gizmo("first-example-gizmo", gizmo_ctx, xform_a))
+    // {
+    //     std::cout << get_local_time_ns() << " - " << "First Gizmo Hovered..." << std::endl;
+    //     if (xform_a != xform_a_last) std::cout << get_local_time_ns() << " - " << "First Gizmo Changed..." << std::endl;
+    //     xform_a_last = xform_a;
+    // }
+    //
+    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b);
+
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
         .width = sokol.app.width(),
@@ -184,6 +201,10 @@ export fn frame() void {
         state.display.begin(null);
         defer state.display.end(null);
         scene.draw(state.display.camera, .Display);
+        for (state.gizmo_ctx.drawlist.items) |m| {
+            // TODO
+            _ = m;
+        }
     }
     sg.commit();
 }

@@ -34,6 +34,8 @@ pub const Vec3 = extern struct {
     y: f32,
     z: f32,
 
+    pub const one = Vec3{ .x = 1, .y = 1, .z = 1 };
+
     pub fn zero() Vec3 {
         return Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
     }
@@ -383,14 +385,12 @@ pub const Quat = struct {
     z: f32,
     w: f32,
 
-    pub fn indentity() @This() {
-        return .{
-            .x = 0,
-            .y = 0,
-            .z = 0,
-            .w = 1,
-        };
-    }
+    pub const indentity: Quat = .{
+        .x = 0,
+        .y = 0,
+        .z = 0,
+        .w = 1,
+    };
 
     pub fn axisAngle(axis: Vec3, angle: f32) Quat {
         const s = std.math.sin(angle / 2);
@@ -408,6 +408,17 @@ pub const Quat = struct {
             .y = -q.y,
             .z = -q.z,
             .w = q.w,
+        };
+    }
+
+    pub fn inverse(q: @This()) @This() {
+        const length2 = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+        const c = q.conj();
+        return .{
+            .x = c.x / length2,
+            .y = c.y / length2,
+            .z = c.z / length2,
+            .w = c.w / length2,
         };
     }
 
@@ -452,10 +463,14 @@ pub const Quat = struct {
                 [4]f32{ 0, 0, 0, 1 },
         };
     }
+
+    pub fn qrot(q: @This(), v: Vec3) Vec3 {
+        return (q.dirX().scale(v.x)).add(q.dirY().scale(v.y)).add(q.dirZ().scale(v.z));
+    }
 };
 
 pub const RigidTransform = struct {
-    rotation: Quat = Quat.indentity(),
+    rotation: Quat = Quat.indentity,
     translation: Vec3 = Vec3.zero(),
 
     pub fn localToWorld(self: @This()) Mat4 {
@@ -472,5 +487,46 @@ pub const RigidTransform = struct {
         m.m[13] = -self.translation.y;
         m.m[14] = -self.translation.z;
         return m.mul(self.rotation.conj().matrix());
+    }
+};
+
+pub const Transform = struct {
+    // rigid_transform() {}
+    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position, const minalg::float3 & scale) : orientation(orientation), position(position), scale(scale) {}
+    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position, float scale) : orientation(orientation), position(position), scale(scale) {}
+    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position) : orientation(orientation), position(position) {}
+
+    rigid_transform: RigidTransform = .{},
+    // position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    // orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
+    scale: Vec3 = .{ .x = 1, .y = 1, .z = 1 },
+
+    pub fn trs(t: Vec3, r: Quat, s: Vec3) @This() {
+        return .{
+            .rigid_transform = .{ .translation = t, .rotation = r },
+            .scale = s,
+        };
+    }
+
+    // bool                uniform_scale() const { return scale.x == scale.y && scale.x == scale.z; }
+    pub fn matrix(self: @This()) Mat4 {
+        return Mat4.trs(
+            self.rigid_transform.translation,
+            self.rigid_transform.rotation,
+            self.scale,
+        );
+    }
+    // minalg::float3      transform_vector(const minalg::float3 & vec) const { return qrot(orientation, vec * scale); }
+    // minalg::float3      transform_point(const minalg::float3 & p) const { return position + transform_vector(p); }
+    pub fn detransform_point(self: @This(), p: Vec3) Vec3 {
+        return self.detransform_vector(p.sub(self.rigid_transform.translation));
+    }
+    pub fn detransform_vector(self: @This(), vec: Vec3) Vec3 {
+        const v = self.rigid_transform.rotation.inverse().qrot(vec);
+        return .{
+            .x = v.x / self.scale.x,
+            .y = v.y / self.scale.y,
+            .z = v.z / self.scale.z,
+        };
     }
 };

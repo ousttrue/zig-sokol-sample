@@ -11,37 +11,17 @@ const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("camera.zig").RenderTarget;
 
-const RigidTransform = struct {
-    // rigid_transform() {}
-    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position, const minalg::float3 & scale) : orientation(orientation), position(position), scale(scale) {}
-    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position, float scale) : orientation(orientation), position(position), scale(scale) {}
-    // rigid_transform(const minalg::float4 & orientation, const minalg::float3 & position) : orientation(orientation), position(position) {}
-
-    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
-    scale: Vec3 = .{ .x = 1, .y = 1, .z = 1 },
-
-    // bool                uniform_scale() const { return scale.x == scale.y && scale.x == scale.z; }
-    fn matrix(self: @This()) Mat4 {
-        return Mat4.trs(self.position, self.orientation, self.scale);
-    }
-    // minalg::float3      transform_vector(const minalg::float3 & vec) const { return qrot(orientation, vec * scale); }
-    // minalg::float3      transform_point(const minalg::float3 & p) const { return position + transform_vector(p); }
-    // minalg::float3      detransform_point(const minalg::float3 & p) const { return detransform_vector(p - position); }
-    // minalg::float3      detransform_vector(const minalg::float3 & vec) const { return qrot(qinv(orientation), vec) / scale; }
-};
-
-const state = struct {
+pub const state = struct {
     var bind: sg.Bindings = .{};
-    var xform_a = RigidTransform{};
-    var xform_b = RigidTransform{};
+    pub var xform_a = rowmath.Transform{};
+    pub var xform_b = rowmath.Transform{};
     var pip: sg.Pipeline = .{};
     var offscreen_pip: sg.Pipeline = .{};
 };
 
 pub fn setup() void {
-    state.xform_a.position.x = -2;
-    state.xform_b.position.x = 2;
+    state.xform_a.rigid_transform.translation.x = -2;
+    state.xform_b.rigid_transform.translation.x = 2;
 
     // cube vertex buffer
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
