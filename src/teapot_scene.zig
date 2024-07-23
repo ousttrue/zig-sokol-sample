@@ -10,7 +10,6 @@ const geometry = @import("teapot_geometry.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("camera.zig").RenderTarget;
-const linegeom = @import("linegeom.zig");
 
 const RigidTransform = struct {
     // rigid_transform() {}
@@ -33,11 +32,10 @@ const RigidTransform = struct {
 };
 
 const state = struct {
-    var pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
     var xform_a = RigidTransform{};
     var xform_b = RigidTransform{};
-
+    var pip: sg.Pipeline = .{};
     var offscreen_pip: sg.Pipeline = .{};
 };
 
@@ -90,13 +88,7 @@ pub fn draw(camera: Camera, renderTarget: RenderTarget) void {
 
     // teapot
     switch (renderTarget) {
-        .Display => {
-            // grid
-            linegeom.begin(camera);
-            linegeom.grid();
-            linegeom.end();
-            sg.applyPipeline(state.pip);
-        },
+        .Display => sg.applyPipeline(state.pip),
         .OffScreen => sg.applyPipeline(state.offscreen_pip),
     }
     sg.applyBindings(state.bind);

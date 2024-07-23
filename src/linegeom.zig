@@ -1,18 +1,6 @@
 const sokol = @import("sokol");
 const Camera = @import("camera.zig").Camera;
 
-pub fn begin(camera: Camera) void {
-    sokol.gl.defaults();
-    sokol.gl.matrixModeProjection();
-    sokol.gl.sgl_mult_matrix(&camera.projection.m[0]);
-    sokol.gl.matrixModeModelview();
-    sokol.gl.sgl_mult_matrix(&camera.transform.worldToLocal().m[0]);
-}
-
-pub fn end() void {
-    sokol.gl.draw();
-}
-
 pub fn grid() void {
     const n = 5.0;
     sokol.gl.beginLines();

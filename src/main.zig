@@ -9,12 +9,60 @@ const scene = @import("teapot_scene.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("rendertarget.zig").RenderTarget;
+const linegeom = @import("linegeom.zig");
+
+const RenderView = struct {
+    camera: Camera = Camera{},
+    pip: sg.Pipeline = .{},
+    pass_action: sg.PassAction = .{
+        .colors = .{
+            .{
+                // initial clear color
+                .load_action = .CLEAR,
+                .clear_value = .{ .r = 0.0, .g = 0.5, .b = 1.0, .a = 1.0 },
+            },
+            .{},
+            .{},
+            .{},
+        },
+    },
+
+    fn update(self: *@This(), input: InputState) void {
+        self.camera.update(input);
+    }
+
+    fn begin(self: *@This(), _rendertarget: ?RenderTarget) void {
+        if (_rendertarget) |rendertarget| {
+            sg.beginPass(rendertarget.pass);
+        } else {
+            sokol.gl.defaults();
+            sokol.gl.matrixModeProjection();
+            sokol.gl.sgl_mult_matrix(&self.camera.projection.m[0]);
+            sokol.gl.matrixModeModelview();
+            sokol.gl.sgl_mult_matrix(&self.camera.transform.worldToLocal().m[0]);
+
+            sg.beginPass(.{
+                .action = self.pass_action,
+                .swapchain = sokol.glue.swapchain(),
+            });
+        }
+    }
+
+    fn end(_: *@This(), _rendertarget: ?RenderTarget) void {
+        if (_rendertarget) |_| {
+            //
+        } else {
+            simgui.render();
+            sokol.gl.draw();
+        }
+        sg.endPass();
+    }
+};
 
 const state = struct {
-    var pass_action = sg.PassAction{};
-    var camera = Camera{};
+    var display = RenderView{};
+    var offscreen = RenderView{};
     var rendertarget: ?RenderTarget = null;
-    var offscreen_camera = Camera{};
 };
 
 extern fn Custom_ButtonBehaviorMiddleRight() void;
@@ -53,12 +101,6 @@ export fn init() void {
     });
 
     scene.setup();
-
-    state.pass_action.colors[0] = .{
-        // initial clear color
-        .load_action = .CLEAR,
-        .clear_value = .{ .r = 0.0, .g = 0.5, .b = 1.0, .a = 1.0 },
-    };
 }
 
 export fn frame() void {
@@ -69,7 +111,7 @@ export fn frame() void {
         .delta_time = sokol.app.frameDuration(),
         .dpi_scale = sokol.app.dpiScale(),
     });
-    state.camera.update(InputState.from_imgui());
+    state.display.update(InputState.from_imgui());
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
     //=== UI CODE STARTS HERE
@@ -78,7 +120,7 @@ export fn frame() void {
         ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
         ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
         _ = ig.igBegin("Hello Dear ImGui!", 0, ig.ImGuiWindowFlags_None);
-        _ = ig.igColorEdit3("Background", &state.pass_action.colors[0].clear_value.r, ig.ImGuiColorEditFlags_None);
+        _ = ig.igColorEdit3("Background", &state.display.pass_action.colors[0].clear_value.r, ig.ImGuiColorEditFlags_None);
         ig.igEnd();
     }
 
@@ -109,11 +151,12 @@ export fn frame() void {
                     );
 
                     Custom_ButtonBehaviorMiddleRight();
-                    state.offscreen_camera.update(InputState.from_rendertarget(pos, size));
-
-                    sg.beginPass(rendertarget.pass);
-                    scene.draw(state.offscreen_camera, .OffScreen);
-                    sg.endPass();
+                    state.offscreen.update(InputState.from_rendertarget(pos, size));
+                    {
+                        state.offscreen.begin(rendertarget);
+                        defer state.offscreen.end(rendertarget);
+                        scene.draw(state.offscreen.camera, .OffScreen);
+                    }
                 }
             }
         }
@@ -122,13 +165,12 @@ export fn frame() void {
     //=== UI CODE ENDS HERE
 
     // call simgui.render() inside a sokol-gfx pass
-    sg.beginPass(.{ .action = state.pass_action, .swapchain = sokol.glue.swapchain() });
-
-    scene.draw(state.camera, .Display);
-
-    simgui.render();
-
-    sg.endPass();
+    {
+        state.display.begin(null);
+        defer state.display.end(null);
+        scene.draw(state.offscreen.camera, .Display);
+        linegeom.grid();
+    }
     sg.commit();
 }
 
