@@ -92,8 +92,13 @@ pub const Vec4 = extern struct {
     z: f32,
     w: f32,
 
-    pub fn dot(v0: Vec4, v1: Vec4) f32 {
-        return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w;
+    pub fn fromVec3(v: Vec3, w: f32) @This() {
+        return .{
+            .x = v.x,
+            .y = v.y,
+            .z = v.z,
+            .w = w,
+        };
     }
 
     pub fn toVec3(self: @This()) Vec3 {
@@ -102,6 +107,10 @@ pub const Vec4 = extern struct {
             .y = self.y,
             .z = self.z,
         };
+    }
+
+    pub fn dot(v0: Vec4, v1: Vec4) f32 {
+        return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z + v0.w * v1.w;
     }
 };
 
@@ -262,6 +271,28 @@ pub const Mat4 = extern struct {
                 f4(r.dirY().scale(s.y), 0) ++
                 f4(r.dirZ().scale(s.z), 0) ++
                 [4]f32{ t.x, t.y, t.z, 1 },
+        };
+    }
+
+    pub fn transform_coord(self: @This(), coord: Vec3) Vec3 {
+        const r = self.apply(Vec4.fromVec3(coord, 1));
+        return .{
+            .x = r.x / r.w,
+            .y = r.y / r.w,
+            .z = r.z / r.w,
+        };
+    }
+
+    pub fn transform_vector(self: @This(), vector: Vec3) Vec3 {
+        return self.apply(Vec4.fromVec3(vector, 0)).toVec3();
+    }
+
+    pub fn apply(self: @This(), v: Vec4) Vec4 {
+        return .{
+            .x = v.dot(self.col0()),
+            .y = v.dot(self.col1()),
+            .z = v.dot(self.col2()),
+            .w = v.dot(self.col3()),
         };
     }
 };
@@ -431,7 +462,7 @@ pub const Quat = struct {
         };
     }
 
-    fn dirX(q: @This()) Vec3 {
+    pub fn dirX(q: @This()) Vec3 {
         return .{
             .x = q.w * q.w + q.x * q.x - q.y * q.y - q.z * q.z,
             .y = (q.x * q.y + q.z * q.w) * 2,
@@ -439,7 +470,7 @@ pub const Quat = struct {
         };
     }
 
-    fn dirY(q: @This()) Vec3 {
+    pub fn dirY(q: @This()) Vec3 {
         return .{
             .x = (q.x * q.y - q.z * q.w) * 2,
             .y = q.w * q.w - q.x * q.x + q.y * q.y - q.z * q.z,
@@ -447,7 +478,7 @@ pub const Quat = struct {
         };
     }
 
-    fn dirZ(q: @This()) Vec3 {
+    pub fn dirZ(q: @This()) Vec3 {
         return .{
             .x = (q.z * q.x + q.y * q.w) * 2,
             .y = (q.y * q.z - q.x * q.w) * 2,
@@ -508,7 +539,9 @@ pub const Transform = struct {
         };
     }
 
-    // bool                uniform_scale() const { return scale.x == scale.y && scale.x == scale.z; }
+    pub fn uniform_scale(self: @This()) bool {
+        return self.scale.x == self.scale.y and self.scale.x == self.scale.z;
+    }
     pub fn matrix(self: @This()) Mat4 {
         return Mat4.trs(
             self.rigid_transform.translation,
@@ -516,8 +549,17 @@ pub const Transform = struct {
             self.scale,
         );
     }
-    // minalg::float3      transform_vector(const minalg::float3 & vec) const { return qrot(orientation, vec * scale); }
-    // minalg::float3      transform_point(const minalg::float3 & p) const { return position + transform_vector(p); }
+
+    pub fn transform_vector(self: @This(), vec: Vec3) Vec3 {
+        return self.rigid_transform.rotation.qrot(.{
+            .x = vec.x * self.scale.x,
+            .y = vec.y * self.scale.y,
+            .z = vec.z * self.scale.z,
+        });
+    }
+    pub fn transform_point(self: @This(), p: Vec3) Vec3 {
+        return self.rigid_transform.translation.add(self.transform_vector(p));
+    }
     pub fn detransform_point(self: @This(), p: Vec3) Vec3 {
         return self.detransform_vector(p.sub(self.rigid_transform.translation));
     }

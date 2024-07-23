@@ -133,7 +133,7 @@ export fn frame() void {
     //     xform_a_last = xform_a;
     // }
     //
-    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b);
+    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b) catch unreachable;
 
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
