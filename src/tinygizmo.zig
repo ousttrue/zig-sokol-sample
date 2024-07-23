@@ -6,6 +6,17 @@ const Vec4 = rowmath.Vec4;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 
+fn snap(value: Vec3, f: f32) ?Vec3 {
+    if (f > 0.0) {
+        return .{
+            .x = std.math.floor(value.x / f) * f,
+            .y = std.math.floor(value.y / f) * f,
+            .z = std.math.floor(value.z / f) * f,
+        };
+    }
+    return null;
+}
+
 pub const Ray = struct {
     origin: Vec3,
     direction: Vec3,
@@ -358,22 +369,28 @@ pub const Context = struct {
                 .{ .x = 0, .y = 1, .z = 0 },
                 .{ .x = 0, .y = 0, .z = 1 },
             };
-            _ = axes; // autofix
 
+            var position = _p.rigid_transform.translation;
             if (self.gizmos.getPtr(id)) |g| {
                 if (g.active) {
-                    //        position += g.gizmos[id].click_offset;
-                    //        switch (g.gizmos[id].interaction_mode)
-                    //        {
-                    //        case interact::translate_x: axis_translation_dragger(id, g, axes[0], position); break;
-                    //        case interact::translate_y: axis_translation_dragger(id, g, axes[1], position); break;
-                    //        case interact::translate_z: axis_translation_dragger(id, g, axes[2], position); break;
-                    //        case interact::translate_yz: plane_translation_dragger(id, g, axes[0], position); break;
-                    //        case interact::translate_zx: plane_translation_dragger(id, g, axes[1], position); break;
-                    //        case interact::translate_xy: plane_translation_dragger(id, g, axes[2], position); break;
-                    //        case interact::translate_xyz: plane_translation_dragger(id, g, -minalg::qzdir(g.active_state.cam.orientation), position); break;
-                    //        }
-                    //        position -= g.gizmos[id].click_offset;
+                    position = position.add(g.click_offset);
+                    if (switch (g.mode) {
+                        .Translate_x => self.axis_translation_dragger(g, axes[0], position),
+                        .Translate_y => self.axis_translation_dragger(g, axes[1], position),
+                        .Translate_z => self.axis_translation_dragger(g, axes[2], position),
+                        .Translate_yz => self.plane_translation_dragger(g, axes[0], position),
+                        .Translate_zx => self.plane_translation_dragger(g, axes[1], position),
+                        .Translate_xy => self.plane_translation_dragger(g, axes[2], position),
+                        .Translate_xyz => self.plane_translation_dragger(
+                            g,
+                            self.active_state.cam.orientation.dirZ().negate(),
+                            position,
+                        ),
+                        else => unreachable,
+                    }) |new_position| {
+                        position = new_position;
+                    }
+                    position = position.sub(g.click_offset);
                 }
 
                 if (self.has_released) {
@@ -415,6 +432,50 @@ pub const Context = struct {
                 }
             }
         }
+    }
+
+    fn plane_translation_dragger(self: @This(), interaction: *Interaction, plane_normal: Vec3, point: Vec3) ?Vec3 {
+        // Mouse clicked
+        if (self.has_clicked) {
+            interaction.original_position = point;
+        }
+
+        std.debug.assert(self.active_state.mouse_left);
+        // Define the plane to contain the original position of the object
+        const plane_point = interaction.original_position;
+        const ray = Ray{
+            .origin = self.active_state.ray_origin,
+            .direction = self.active_state.ray_direction,
+        };
+
+        // If an intersection exists between the ray and the plane, place the object at that point
+        const denom = ray.direction.dot(plane_normal);
+        if (@abs(denom) == 0) {
+            return null;
+        }
+
+        const t = plane_point.sub(ray.origin).dot(plane_normal) / denom;
+        if (t < 0) {
+            return null;
+        }
+
+        var result = ray.point(t);
+        if (snap(result, self.active_state.snap_translation)) |new_position| {
+            result = new_position;
+        }
+        return result;
+    }
+
+    fn axis_translation_dragger(self: @This(), interaction: *Interaction, axis: Vec3, point: Vec3) ?Vec3 {
+        // First apply a plane translation dragger with a plane that contains the desired axis and is oriented to face the camera
+        const plane_tangent = axis.cross(point.sub(self.active_state.cam.position));
+        const plane_normal = axis.cross(plane_tangent);
+        const new_point = self.plane_translation_dragger(interaction, plane_normal, point) orelse {
+            return null;
+        };
+        // Constrain object motion to be along the desired axis
+        const delta = new_point.sub(interaction.original_position);
+        return interaction.original_position.add(axis.scale(delta.dot(axis)));
     }
 
     fn rotation_gizmo(_: @This(), name: []const u8, t: *rowmath.Transform) void {
