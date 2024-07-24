@@ -186,12 +186,8 @@ const Triangle = struct {
 const Mat32 = struct {
     row0: Vec3,
     row1: Vec3,
-    fn mul(self: @This(), p: Vec2) Vec3 {
-        return .{
-            .x = self.row0.x * p.x + self.row1.x * p.y,
-            .y = self.row0.y * p.x + self.row1.y * p.y,
-            .z = self.row0.z * p.x + self.row1.z * p.y,
-        };
+    fn mul(a: @This(), b: Vec2) Vec3 {
+        return a.row0.scale(b.x).add(a.row1.scale(b.y));
     }
 };
 
@@ -212,14 +208,16 @@ fn make_lathed_geometry(
 ) type {
     var _vertices = [1]GeometryVertex{.{}} ** ((slices + 1) * points.len);
     var _triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
-    var index: usize = 0;
+    var v_index: usize = 0;
+    var t_index: usize = 0;
     for (0..slices + 1) |i| {
         const angle = (@as(f32, @floatFromInt(i % slices)) * TAU / slices) + (TAU / 8.0);
         const c = std.math.cos(angle);
         const s = std.math.sin(angle);
         const mat = Mat32{ .row0 = axis, .row1 = arm1.scale(c).add(arm2.scale(s)) };
-        for (points, 0..) |p, j| {
-            _vertices[j].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
+        for (points) |p| {
+            _vertices[v_index].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
+            v_index += 1;
         }
 
         if (i > 0) {
@@ -228,10 +226,10 @@ fn make_lathed_geometry(
                 const index1: u16 = @intCast((i - 0) * (points.len) + (j - 1));
                 const index2: u16 = @intCast((i - 0) * (points.len) + (j - 0));
                 const index3: u16 = @intCast((i - 1) * (points.len) + (j - 0));
-                _triangles[index] = .{ index0, index1, index2 };
-                index += 1;
-                _triangles[index] = .{ index0, index2, index3 };
-                index += 1;
+                _triangles[t_index] = .{ index0, index1, index2 };
+                t_index += 1;
+                _triangles[t_index] = .{ index0, index2, index3 };
+                t_index += 1;
             }
         }
     }
@@ -287,17 +285,19 @@ const MeshComponent = struct {
         };
     }
 
+    const translate_x = MeshComponent.init(make_lathed_geometry(
+        .{ .x = 1, .y = 0, .z = 0 },
+        .{ .x = 0, .y = 1, .z = 0 },
+        .{ .x = 0, .y = 0, .z = 1 },
+        16,
+        &arrow_points,
+        0,
+    ), .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 }, .{ .x = 1, .y = 0, .z = 0, .w = 1.0 });
+
     fn get(i: InteractionMode) ?MeshComponent {
         return switch (i) {
             .None => null,
-            .Translate_x => MeshComponent.init(make_lathed_geometry(
-                .{ .x = 1, .y = 0, .z = 0 },
-                .{ .x = 0, .y = 1, .z = 0 },
-                .{ .x = 0, .y = 0, .z = 1 },
-                16,
-                &arrow_points,
-                0,
-            ), .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 }, .{ .x = 1, .y = 0, .z = 0, .w = 1.0 }),
+            .Translate_x => translate_x,
             .Translate_y => null,
             .Translate_z => null,
             .Translate_yz => null,
@@ -415,7 +415,7 @@ pub const Context = struct {
         name: []const u8,
         _p: *rowmath.Transform,
     ) !void {
-        const p = rowmath.Transform.trs(
+        var p = rowmath.Transform.trs(
             _p.rigid_transform.translation,
             if (self.local_toggle) _p.rigid_transform.rotation else Quat.indentity,
             Vec3.one,
@@ -494,9 +494,8 @@ pub const Context = struct {
                 .{ .x = 0, .y = 0, .z = 1 },
             };
 
-            var position = _p.rigid_transform.translation;
             if (g.active) {
-                position = position.add(g.click_offset);
+                var position = p.rigid_transform.translation.add(g.click_offset);
                 if (switch (g.mode) {
                     .Translate_x => self.axis_translation_dragger(g, axes[0], position),
                     .Translate_y => self.axis_translation_dragger(g, axes[1], position),
@@ -511,9 +510,10 @@ pub const Context = struct {
                     ),
                     else => @panic("switch"),
                 }) |new_position| {
-                    position = new_position;
+                    _ = new_position;
+                    // position = new_position;
                 }
-                position = position.sub(g.click_offset);
+                p.rigid_transform.translation = position.sub(g.click_offset);
             }
 
             if (self.has_released) {

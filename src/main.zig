@@ -203,21 +203,22 @@ export fn frame() void {
         state.display.begin(null);
         defer state.display.end(null);
         scene.draw(state.display.camera, .Display);
-        sokol.gl.beginTriangles();
 
         for (state.gizmo_ctx.drawlist.items) |m| {
             sokol.gl.matrixModeModelview();
             sokol.gl.pushMatrix();
             sokol.gl.multMatrix(&m.matrix.m[0]);
+            sokol.gl.beginTriangles();
+            sokol.gl.c4f(m.color.x, m.color.y, m.color.z, m.color.w);
             for (m.mesh.triangles) |triangle| {
                 for (triangle) |i| {
                     const p = m.mesh.vertices[i].position;
                     sokol.gl.v3f(p.x, p.y, p.z);
                 }
             }
+            sokol.gl.end();
             sokol.gl.popMatrix();
         }
-        sokol.gl.end();
     }
     sg.commit();
 }
