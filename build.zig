@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) void {
             .use_filesystem = false,
             .shell_file_path = dep_sokol.path("src/sokol/web/shell.html").getPath(b),
             .extra_args = &.{
-                "-sTOTAL_MEMORY=300MB",
+                "-sTOTAL_MEMORY=512MB",
                 "-sUSE_OFFSET_CONVERTER=1",
             },
         });
