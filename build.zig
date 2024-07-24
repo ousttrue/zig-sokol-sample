@@ -65,6 +65,18 @@ pub fn build(b: *std.Build) void {
         dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
     } else {
         compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
+
+        //
+        // test
+        //
+        const unit_tests = b.addTest(.{
+            .target = target,
+            .optimize = optimize,
+            .root_source_file = b.path("src/main.zig"),
+        });
+        b.step("test", "Run unit tests").dependOn(&b.addRunArtifact(unit_tests).step);
+        unit_tests.root_module.addImport("sokol", dep_sokol.module("sokol"));
+        unit_tests.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     }
 }
 
@@ -103,16 +115,6 @@ fn buildNative(
         run_cmd.addArgs(args);
     }
     b.step("run", "Run the app").dependOn(&run_cmd.step);
-
-    //
-    // test
-    //
-    const unit_tests = b.addTest(.{
-        .target = target,
-        .optimize = optimize,
-        .root_source_file = b.path("src/math.zig"),
-    });
-    b.step("test", "Run unit tests").dependOn(&b.addRunArtifact(unit_tests).step);
 
     return exe;
 }

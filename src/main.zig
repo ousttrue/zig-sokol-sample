@@ -80,11 +80,9 @@ pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
         if (rendertarget.width == width and rendertarget.height == height) {
             return rendertarget;
         }
-        // std.debug.print("destroy rendertarget\n", .{});
         rendertarget.deinit();
     }
 
-    // std.debug.print("creae rendertarget: {} x {}\n", .{ width, height });
     const rendertarget = RenderTarget.init(width, height);
     state.rendertarget = rendertarget;
     return rendertarget;
@@ -127,17 +125,6 @@ export fn init() void {
 }
 
 export fn frame() void {
-    const gizmo_state = tinygizmo.ApplicationState{};
-    state.gizmo_ctx.update(gizmo_state);
-    // if (transform_gizmo("first-example-gizmo", gizmo_ctx, xform_a))
-    // {
-    //     std::cout << get_local_time_ns() << " - " << "First Gizmo Hovered..." << std::endl;
-    //     if (xform_a != xform_a_last) std::cout << get_local_time_ns() << " - " << "First Gizmo Changed..." << std::endl;
-    //     xform_a_last = xform_a;
-    // }
-    //
-    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b) catch @panic("transform");
-
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
         .width = sokol.app.width(),
@@ -146,6 +133,19 @@ export fn frame() void {
         .dpi_scale = sokol.app.dpiScale(),
     });
     state.display.update(InputState.from_imgui());
+
+    const io = ig.igGetIO().*;
+    if (!io.WantCaptureMouse) {
+        state.gizmo_ctx.update(.{
+            .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
+            .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
+            .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
+            .cam_yFov = state.display.camera.yFov,
+            .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
+        });
+        state.gizmo_ctx.transform("first-example-gizmo", &scene.state.xform_a) catch @panic("transform a");
+        state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b) catch @panic("transform b");
+    }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
     //=== UI CODE STARTS HERE

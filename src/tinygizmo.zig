@@ -5,6 +5,7 @@ const Vec3 = rowmath.Vec3;
 const Vec4 = rowmath.Vec4;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
+const Ray = @import("camera.zig").Ray;
 
 const TAU = 6.28318530718;
 
@@ -19,33 +20,6 @@ fn snap(value: Vec3, f: f32) ?Vec3 {
     return null;
 }
 
-pub const Ray = struct {
-    origin: Vec3,
-    direction: Vec3,
-
-    fn point(self: @This(), t: f32) Vec3 {
-        return self.origin.add(self.direction.scale(t));
-    }
-
-    fn scale(self: *@This(), f: f32) void {
-        self.origin = self.origin.scale(f);
-        self.direction = self.direction.scale(f);
-    }
-
-    fn descale(self: *@This(), f: f32) void {
-        self.origin = .{
-            .x = self.origin.x / f,
-            .y = self.origin.y / f,
-            .z = self.origin.z / f,
-        };
-        self.direction = .{
-            .x = self.direction.x / f,
-            .y = self.direction.y / f,
-            .z = self.direction.z / f,
-        };
-    }
-};
-
 pub const CameraParameters = struct {
     yfov: f32 = 0,
     near_clip: f32 = 0,
@@ -55,7 +29,22 @@ pub const CameraParameters = struct {
 };
 
 pub const ApplicationState = struct {
+    // 3d viewport used to render the view
+    viewport_size: Vec2,
+    // Used for constructing inverse view projection for raycasting onto gizmo geometry
+    // cam: CameraParameters = .{},
+    cam_dir: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    cam_yFov: f32 = 0,
+    // world-space ray (from camera position to mouse cursor)
+    ray: Ray = .{
+        .origin = .{ .x = 0, .y = 0, .z = 0 },
+        .direction = .{ .x = 0, .y = 0, .z = 0 },
+    },
+    // ray_origin: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    // ray_direction: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    // mouse
     mouse_left: bool = false,
+    // keyboard
     hotkey_translate: bool = false,
     hotkey_rotate: bool = false,
     hotkey_scale: bool = false,
@@ -69,14 +58,6 @@ pub const ApplicationState = struct {
     snap_scale: f32 = 0,
     // Radians used for snapping rotation quaternions (i.e. PI/8 or PI/16)
     snap_rotation: f32 = 0,
-    // 3d viewport used to render the view
-    viewport_size: Vec2 = .{ .x = 0, .y = 0 },
-    // world-space ray origin (i.e. the camera position)
-    ray_origin: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // world-space ray direction
-    ray_direction: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // Used for constructing inverse view projection for raycasting onto gizmo geometry
-    cam: CameraParameters = .{},
 };
 
 pub const TransformMode = enum { Translate, Rotate, Scale };
@@ -430,8 +411,8 @@ pub const Context = struct {
     transform_mode: TransformMode = .Translate,
     // std::map<uint32_t, interaction_state> gizmos;
     gizmos: std.AutoHashMap(u32, Interaction),
-    active_state: ApplicationState = .{},
-    last_state: ApplicationState = .{},
+    active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
+    last_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
     // State to describe if the gizmo should use transform-local math
     local_toggle: bool = true,
     // State to describe if the user has pressed the left mouse button during the last frame
@@ -481,8 +462,8 @@ pub const Context = struct {
 
     // This will calculate a scale constant based on the number of screenspace pixels passed as pixel_scale.
     fn scale_screenspace(self: @This(), position: rowmath.Vec3, pixel_scale: f32) f32 {
-        const dist = position.sub(self.active_state.cam.position).len();
-        return std.math.tan(self.active_state.cam.yfov) * dist * (pixel_scale / self.active_state.viewport_size.y);
+        const dist = position.sub(self.active_state.ray.origin).len();
+        return std.math.tan(self.active_state.cam_yFov) * dist * (pixel_scale / self.active_state.viewport_size.y);
     }
 
     fn get_or_add(self: *@This(), id: u32) *Interaction {
@@ -518,10 +499,7 @@ pub const Context = struct {
 
         {
             var updated_state: InteractionMode = .None;
-            var ray = detransform(p, .{
-                .origin = self.active_state.ray_origin,
-                .direction = self.active_state.ray_direction,
-            });
+            var ray = detransform(p, self.active_state.ray);
             ray.descale(draw_scale);
 
             var best_t = std.math.inf(f32);
@@ -556,7 +534,6 @@ pub const Context = struct {
 
             if (self.has_clicked) {
                 g.mode = updated_state;
-
                 if (g.mode != .None) {
                     ray.scale(draw_scale);
                     if (self.local_toggle) {
@@ -581,7 +558,7 @@ pub const Context = struct {
                 .{ .x = 0, .y = 0, .z = 1 },
             };
 
-            if (g.active) {
+            if (g.active and self.active_state.mouse_left) {
                 var position = p.rigid_transform.translation.add(g.click_offset);
                 if (switch (g.mode) {
                     .Translate_x => self.axis_translation_dragger(g, axes[0], position),
@@ -592,7 +569,7 @@ pub const Context = struct {
                     .Translate_xy => self.plane_translation_dragger(g, axes[2], position),
                     .Translate_xyz => self.plane_translation_dragger(
                         g,
-                        self.active_state.cam.orientation.dirZ().negate(),
+                        self.active_state.cam_dir, //.orientation.dirZ().negate(),
                         position,
                     ),
                     else => @panic("switch"),
@@ -634,6 +611,8 @@ pub const Context = struct {
                     try self.drawlist.append(r);
                 }
             }
+
+            _p.* = p;
         }
     }
 
@@ -643,26 +622,21 @@ pub const Context = struct {
             interaction.original_position = point;
         }
 
-        std.debug.assert(self.active_state.mouse_left);
         // Define the plane to contain the original position of the object
         const plane_point = interaction.original_position;
-        const ray = Ray{
-            .origin = self.active_state.ray_origin,
-            .direction = self.active_state.ray_direction,
-        };
 
         // If an intersection exists between the ray and the plane, place the object at that point
-        const denom = ray.direction.dot(plane_normal);
+        const denom = self.active_state.ray.direction.dot(plane_normal);
         if (@abs(denom) == 0) {
             return null;
         }
 
-        const t = plane_point.sub(ray.origin).dot(plane_normal) / denom;
+        const t = plane_point.sub(self.active_state.ray.origin).dot(plane_normal) / denom;
         if (t < 0) {
             return null;
         }
 
-        var result = ray.point(t);
+        var result = self.active_state.ray.point(t);
         if (snap(result, self.active_state.snap_translation)) |new_position| {
             result = new_position;
         }
@@ -671,7 +645,7 @@ pub const Context = struct {
 
     fn axis_translation_dragger(self: @This(), interaction: *Interaction, axis: Vec3, point: Vec3) ?Vec3 {
         // First apply a plane translation dragger with a plane that contains the desired axis and is oriented to face the camera
-        const plane_tangent = axis.cross(point.sub(self.active_state.cam.position));
+        const plane_tangent = axis.cross(point.sub(self.active_state.ray.origin));
         const plane_normal = axis.cross(plane_tangent);
         const new_point = self.plane_translation_dragger(interaction, plane_normal, point) orelse {
             return null;
