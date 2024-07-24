@@ -402,7 +402,10 @@ pub const Context = struct {
         if (self.gizmos.getPtr(id)) |gizmo| {
             return gizmo;
         } else {
-            self.gizmos.put(id, .{}) catch unreachable;
+            self.gizmos.put(id, .{}) catch |e| {
+                std.debug.print("get_or_add => {}\n", .{e});
+                @panic("get_or_add");
+            };
             return self.gizmos.getPtr(id).?;
         }
     }
@@ -506,7 +509,7 @@ pub const Context = struct {
                         self.active_state.cam.orientation.dirZ().negate(),
                         position,
                     ),
-                    else => unreachable,
+                    else => @panic("switch"),
                 }) |new_position| {
                     position = new_position;
                 }

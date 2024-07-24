@@ -5,7 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(Windows) Launch",
+            "name": "Launch Chrome",
+            "request": "launch",
+            "type": "chrome",
+            "url": "http://localhost:6931",
+            "webRoot": "${workspaceFolder}/zig-out/web"
+        },
+        {
+            "name": "exe",
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/zig-out/bin/zig-sokol-sample.exe",

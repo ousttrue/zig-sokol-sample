@@ -94,7 +94,9 @@ pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
 // }
 
 export fn init() void {
-    state.allocator = std.heap.page_allocator;
+    // state.allocator = std.heap.page_allocator;
+    // wasm
+    state.allocator = std.heap.c_allocator;
     state.gizmo_ctx = tinygizmo.Context.init(state.allocator);
 
     // initialize sokol-gfx
@@ -133,7 +135,7 @@ export fn frame() void {
     //     xform_a_last = xform_a;
     // }
     //
-    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b) catch unreachable;
+    state.gizmo_ctx.transform("second-example-gizmo", &scene.state.xform_b) catch @panic("transform");
 
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
