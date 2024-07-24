@@ -44,14 +44,15 @@ const RenderView = struct {
             });
             sokol.gl.setContext(sokol.gl.defaultContext());
         }
-    }
 
-    fn end(self: *@This(), _rendertarget: ?RenderTarget) void {
         sokol.gl.defaults();
         sokol.gl.matrixModeProjection();
         sokol.gl.sgl_mult_matrix(&self.camera.projection.m[0]);
         sokol.gl.matrixModeModelview();
         sokol.gl.sgl_mult_matrix(&self.camera.transform.worldToLocal().m[0]);
+    }
+
+    fn end(self: *@This(), _rendertarget: ?RenderTarget) void {
         linegeom.grid();
 
         if (_rendertarget) |_| {

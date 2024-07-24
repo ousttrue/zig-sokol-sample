@@ -4,6 +4,7 @@ const Camera = @import("camera.zig").Camera;
 pub fn grid() void {
     const n = 5.0;
     sokol.gl.beginLines();
+    sokol.gl.c3f(1, 1, 1);
     {
         var x: f32 = -n;
         while (x <= n) : (x += 1) {

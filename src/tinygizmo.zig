@@ -27,21 +27,21 @@ pub const Ray = struct {
         return self.origin.add(self.direction.scale(t));
     }
 
-    fn transform(self: *@This(), scale: f32) void {
-        self.origin = self.origin.scale(scale);
-        self.direction = self.direction.scale(scale);
+    fn scale(self: *@This(), f: f32) void {
+        self.origin = self.origin.scale(f);
+        self.direction = self.direction.scale(f);
     }
 
-    fn detransform(self: *@This(), scale: f32) void {
+    fn descale(self: *@This(), f: f32) void {
         self.origin = .{
-            .x = self.origin.x / scale,
-            .y = self.origin.y / scale,
-            .z = self.origin.z / scale,
+            .x = self.origin.x / f,
+            .y = self.origin.y / f,
+            .z = self.origin.z / f,
         };
         self.direction = .{
-            .x = self.direction.x / scale,
-            .y = self.direction.y / scale,
-            .z = self.direction.z / scale,
+            .x = self.direction.x / f,
+            .y = self.direction.y / f,
+            .z = self.direction.z / f,
         };
     }
 };
@@ -206,8 +206,8 @@ fn make_lathed_geometry(
     comptime points: []const Vec2,
     comptime eps: f32,
 ) type {
-    var _vertices = [1]GeometryVertex{.{}} ** ((slices + 1) * points.len);
-    var _triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
+    var vertices = [1]GeometryVertex{.{}} ** ((slices + 1) * points.len);
+    var triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
     var v_index: usize = 0;
     var t_index: usize = 0;
     for (0..slices + 1) |i| {
@@ -216,7 +216,7 @@ fn make_lathed_geometry(
         const s = std.math.sin(angle);
         const mat = Mat32{ .row0 = axis, .row1 = arm1.scale(c).add(arm2.scale(s)) };
         for (points) |p| {
-            _vertices[v_index].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
+            vertices[v_index].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
             v_index += 1;
         }
 
@@ -226,16 +226,53 @@ fn make_lathed_geometry(
                 const index1: u16 = @intCast((i - 0) * (points.len) + (j - 1));
                 const index2: u16 = @intCast((i - 0) * (points.len) + (j - 0));
                 const index3: u16 = @intCast((i - 1) * (points.len) + (j - 0));
-                _triangles[t_index] = .{ index0, index1, index2 };
+                triangles[t_index] = .{ index0, index1, index2 };
                 t_index += 1;
-                _triangles[t_index] = .{ index0, index2, index3 };
+                triangles[t_index] = .{ index0, index2, index3 };
                 t_index += 1;
             }
         }
     }
     // compute_normals(mesh);
 
-    return make_const_mesh(_vertices, _triangles);
+    return make_const_mesh(vertices, triangles);
+}
+
+fn make_box_geometry(a: Vec3, b: Vec3) type {
+    // geometry_mesh mesh;
+    const vertices = [_]GeometryVertex{
+        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
+        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
+        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
+        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
+        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
+        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
+    };
+    const triangles = [_][3]u16{
+        .{ 0, 1, 2 },    .{ 0, 2, 3 },    .{ 4, 5, 6 },    .{ 4, 6, 7 },    .{ 8, 9, 10 },
+        .{ 8, 10, 11 },  .{ 12, 13, 14 }, .{ 12, 14, 15 }, .{ 16, 17, 18 }, .{ 16, 18, 19 },
+        .{ 20, 21, 22 }, .{ 20, 22, 23 },
+    };
+
+    return make_const_mesh(vertices, triangles);
 }
 
 const GeometryMesh = struct {
@@ -259,7 +296,7 @@ const GeometryMesh = struct {
     }
 };
 
-const arrow_points = [_]Vec2{
+const ARROW_POINTS = [_]Vec2{
     .{ .x = 0.25, .y = 0 },
     .{ .x = 0.25, .y = 0.05 },
     .{ .x = 1, .y = 0.05 },
@@ -268,6 +305,25 @@ const arrow_points = [_]Vec2{
 };
 // std::vector<float2> mace_points             = { { 0.25f, 0 }, { 0.25f, 0.05f },{ 1, 0.05f },{ 1, 0.1f },{ 1.25f, 0.1f }, { 1.25f, 0 } };
 // std::vector<float2> ring_points             = { { +0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1.1f },{ -0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1 } };
+
+const BASE_RED: Vec4 = .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 };
+const HIGH_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
+const BASE_GREEN: Vec4 = .{ .x = 0.5, .y = 1, .z = 0.5, .w = 1.0 };
+const HIGH_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
+const BASE_BLUE: Vec4 = .{ .x = 0.5, .y = 0.5, .z = 1, .w = 1.0 };
+const HIGH_BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
+const BASE_CYAN: Vec4 = .{ .x = 0.5, .y = 1, .z = 1, .w = 0.5 };
+const HIGH_CYAN: Vec4 = .{ .x = 0, .y = 1, .z = 1, .w = 0.6 };
+const BASE_MAGENTA: Vec4 = .{ .x = 1, .y = 0.5, .z = 1, .w = 0.5 };
+const HIGH_MAGENTA: Vec4 = .{ .x = 1, .y = 0, .z = 1, .w = 0.6 };
+const BASE_YELLOW: Vec4 = .{ .x = 1, .y = 1, .z = 0.5, .w = 0.5 };
+const HIGH_YELLOW: Vec4 = .{ .x = 1, .y = 1, .z = 0, .w = 0.6 };
+const BASE_GRAY: Vec4 = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 0.25 };
+const HIGH_GRAY: Vec4 = .{ .x = 1, .y = 1, .z = 1, .w = 0.35 };
+
+const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
+const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
+const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
 
 const MeshComponent = struct {
     mesh: GeometryMesh,
@@ -285,25 +341,63 @@ const MeshComponent = struct {
         };
     }
 
-    const translate_x = MeshComponent.init(make_lathed_geometry(
-        .{ .x = 1, .y = 0, .z = 0 },
-        .{ .x = 0, .y = 1, .z = 0 },
-        .{ .x = 0, .y = 0, .z = 1 },
-        16,
-        &arrow_points,
-        0,
-    ), .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 }, .{ .x = 1, .y = 0, .z = 0, .w = 1.0 });
-
+    const translate_x = MeshComponent.init(
+        make_lathed_geometry(RIGHT, UP, FORWARD, 16, &ARROW_POINTS, 0),
+        BASE_RED,
+        HIGH_RED,
+    );
+    const translate_y = MeshComponent.init(
+        make_lathed_geometry(UP, FORWARD, RIGHT, 16, &ARROW_POINTS, 0),
+        BASE_GREEN,
+        HIGH_GREEN,
+    );
+    const translate_z = MeshComponent.init(
+        make_lathed_geometry(FORWARD, RIGHT, UP, 16, &ARROW_POINTS, 0),
+        BASE_BLUE,
+        HIGH_BLUE,
+    );
+    const translate_yz = MeshComponent.init(
+        make_box_geometry(
+            .{ .x = -0.01, .y = 0.25, .z = 0.25 },
+            .{ .x = 0.01, .y = 0.75, .z = 0.75 },
+        ),
+        BASE_CYAN,
+        HIGH_CYAN,
+    );
+    const translate_zx = MeshComponent.init(
+        make_box_geometry(
+            .{ .x = 0.25, .y = -0.01, .z = 0.25 },
+            .{ .x = 0.75, .y = 0.01, .z = 0.75 },
+        ),
+        BASE_MAGENTA,
+        HIGH_MAGENTA,
+    );
+    const translate_xy = MeshComponent.init(
+        make_box_geometry(
+            .{ .x = 0.25, .y = 0.25, .z = -0.01 },
+            .{ .x = 0.75, .y = 0.75, .z = 0.01 },
+        ),
+        BASE_YELLOW,
+        HIGH_YELLOW,
+    );
+    const translate_xyz = MeshComponent.init(
+        make_box_geometry(
+            .{ .x = -0.05, .y = -0.05, .z = -0.05 },
+            .{ .x = 0.05, .y = 0.05, .z = 0.05 },
+        ),
+        BASE_GRAY,
+        HIGH_GRAY,
+    );
     fn get(i: InteractionMode) ?MeshComponent {
         return switch (i) {
             .None => null,
             .Translate_x => translate_x,
-            .Translate_y => null,
-            .Translate_z => null,
-            .Translate_yz => null,
-            .Translate_zx => null,
-            .Translate_xy => null,
-            .Translate_xyz => null,
+            .Translate_y => translate_y,
+            .Translate_z => translate_z,
+            .Translate_yz => translate_yz,
+            .Translate_zx => translate_zx,
+            .Translate_xy => translate_xy,
+            .Translate_xyz => translate_xyz,
             .Rotate_x => null,
             .Rotate_y => null,
             .Rotate_z => null,
@@ -313,13 +407,6 @@ const MeshComponent = struct {
             .Scale_xyz => null,
         };
     }
-    // mesh_components[interact::translate_x]      = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 16, arrow_points), { 1,0.5f,0.5f, 1.f }, { 1,0,0, 1.f } };
-    // mesh_components[interact::translate_y]      = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 16, arrow_points), { 0.5f,1,0.5f, 1.f }, { 0,1,0, 1.f } };
-    // mesh_components[interact::translate_z]      = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, arrow_points), { 0.5f,0.5f,1, 1.f }, { 0,0,1, 1.f } };
-    // mesh_components[interact::translate_yz]     = { make_box_geometry({ -0.01f,0.25,0.25 },{ 0.01f,0.75f,0.75f }), { 0.5f,1,1, 0.5f }, { 0,1,1, 0.6f } };
-    // mesh_components[interact::translate_zx]     = { make_box_geometry({ 0.25,-0.01f,0.25 },{ 0.75f,0.01f,0.75f }), { 1,0.5f,1, 0.5f }, { 1,0,1, 0.6f } };
-    // mesh_components[interact::translate_xy]     = { make_box_geometry({ 0.25,0.25,-0.01f },{ 0.75f,0.75f,0.01f }), { 1,1,0.5f, 0.5f }, { 1,1,0, 0.6f } };
-    // mesh_components[interact::translate_xyz]    = { make_box_geometry({ -0.05f,-0.05f,-0.05f },{ 0.05f,0.05f,0.05f }),{ 0.9f, 0.9f, 0.9f, 0.25f },{ 1,1,1, 0.35f } };
     // mesh_components[interact::rotate_x]         = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 32, ring_points, 0.003f), { 1, 0.5f, 0.5f, 1.f }, { 1, 0, 0, 1.f } };
     // mesh_components[interact::rotate_y]         = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 32, ring_points, -0.003f), { 0.5f,1,0.5f, 1.f }, { 0,1,0, 1.f } };
     // mesh_components[interact::rotate_z]         = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 32, ring_points), { 0.5f,0.5f,1, 1.f }, { 0,0,1, 1.f } };
@@ -435,7 +522,7 @@ pub const Context = struct {
                 .origin = self.active_state.ray_origin,
                 .direction = self.active_state.ray_direction,
             });
-            ray.detransform(draw_scale);
+            ray.descale(draw_scale);
 
             var best_t = std.math.inf(f32);
             if (MeshComponent.intersect(ray, .Translate_x, best_t)) |t| {
@@ -471,7 +558,7 @@ pub const Context = struct {
                 g.mode = updated_state;
 
                 if (g.mode != .None) {
-                    ray.transform(draw_scale);
+                    ray.scale(draw_scale);
                     if (self.local_toggle) {
                         g.click_offset = p.transform_vector(ray.point(best_t));
                     } else {
@@ -510,8 +597,7 @@ pub const Context = struct {
                     ),
                     else => @panic("switch"),
                 }) |new_position| {
-                    _ = new_position;
-                    // position = new_position;
+                    position = new_position;
                 }
                 p.rigid_transform.translation = position.sub(g.click_offset);
             }
