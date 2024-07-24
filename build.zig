@@ -45,7 +45,10 @@ pub fn build(b: *std.Build) void {
             .use_emmalloc = true,
             .use_filesystem = false,
             .shell_file_path = dep_sokol.path("src/sokol/web/shell.html").getPath(b),
-            .extra_args = &.{"-sTOTAL_MEMORY=200MB"},
+            .extra_args = &.{
+                "-sTOTAL_MEMORY=200MB",
+                "-sUSE_OFFSET_CONVERTER=1",
+            },
         });
         // ...and a special run step to start the web build output via 'emrun'
         const run = sokol.emRunStep(b, .{ .name = NAME, .emsdk = emsdk });
