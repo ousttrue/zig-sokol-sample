@@ -202,8 +202,14 @@ export fn frame() void {
         defer state.display.end(null);
         scene.draw(state.display.camera, .Display);
         for (state.gizmo_ctx.drawlist.items) |m| {
-            // TODO
-            _ = m;
+            sokol.gl.beginTriangles();
+            for (m.mesh.triangles) |triangle| {
+                for (triangle) |i| {
+                    const p = m.mesh.vertices[i].position;
+                    sokol.gl.v3f(p.x, p.y, p.z);
+                }
+            }
+            sokol.gl.end();
         }
     }
     sg.commit();

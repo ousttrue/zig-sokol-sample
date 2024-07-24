@@ -6,6 +6,8 @@ const Vec4 = rowmath.Vec4;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 
+const TAU = 6.28318530718;
+
 fn snap(value: Vec3, f: f32) ?Vec3 {
     if (f > 0.0) {
         return .{
@@ -82,6 +84,7 @@ pub const TransformMode = enum { Translate, Rotate, Scale };
 const Renderable = struct {
     mesh: GeometryMesh,
     color: Vec4,
+    matrix: Mat4,
 };
 
 // 32 bit Fowler–Noll–Vo Hash
@@ -91,7 +94,7 @@ fn hash_fnv1a(str: []const u8) u32 {
     var result = fnv1aBase32;
     for (str) |ch| {
         result ^= @as(u32, ch);
-        result *= fnv1aPrime32;
+        result *%= fnv1aPrime32;
     }
     return result;
 }
@@ -139,9 +142,9 @@ const Interaction = struct {
 };
 
 const GeometryVertex = struct {
-    position: Vec3,
-    normal: Vec3,
-    color: Vec4,
+    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    normal: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+    color: Vec4 = .{ .x = 0, .y = 0, .z = 0, .w = 0 },
 };
 
 const Triangle = struct {
@@ -180,16 +183,73 @@ const Triangle = struct {
     }
 };
 
+const Mat32 = struct {
+    row0: Vec3,
+    row1: Vec3,
+    fn mul(self: @This(), p: Vec2) Vec3 {
+        return .{
+            .x = self.row0.x * p.x + self.row1.x * p.y,
+            .y = self.row0.y * p.x + self.row1.y * p.y,
+            .z = self.row0.z * p.x + self.row1.z * p.y,
+        };
+    }
+};
+
+fn make_const_mesh(_vertices: anytype, _triangles: anytype) type {
+    return struct {
+        const vertices = _vertices;
+        const triangles = _triangles;
+    };
+}
+
+fn make_lathed_geometry(
+    comptime axis: Vec3,
+    comptime arm1: Vec3,
+    comptime arm2: Vec3,
+    comptime slices: i32,
+    comptime points: []const Vec2,
+    comptime eps: f32,
+) type {
+    var _vertices = [1]GeometryVertex{.{}} ** ((slices + 1) * points.len);
+    var _triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
+    var index: usize = 0;
+    for (0..slices + 1) |i| {
+        const angle = (@as(f32, @floatFromInt(i % slices)) * TAU / slices) + (TAU / 8.0);
+        const c = std.math.cos(angle);
+        const s = std.math.sin(angle);
+        const mat = Mat32{ .row0 = axis, .row1 = arm1.scale(c).add(arm2.scale(s)) };
+        for (points, 0..) |p, j| {
+            _vertices[j].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
+        }
+
+        if (i > 0) {
+            for (1..points.len) |j| {
+                const index0: u16 = @intCast((i - 1) * (points.len) + (j - 1));
+                const index1: u16 = @intCast((i - 0) * (points.len) + (j - 1));
+                const index2: u16 = @intCast((i - 0) * (points.len) + (j - 0));
+                const index3: u16 = @intCast((i - 1) * (points.len) + (j - 0));
+                _triangles[index] = .{ index0, index1, index2 };
+                index += 1;
+                _triangles[index] = .{ index0, index2, index3 };
+                index += 1;
+            }
+        }
+    }
+    // compute_normals(mesh);
+
+    return make_const_mesh(_vertices, _triangles);
+}
+
 const GeometryMesh = struct {
-    vertices: std.ArrayList(GeometryVertex),
-    triangles: std.ArrayList([3]u16),
+    vertices: []const GeometryVertex,
+    triangles: []const [3]u16,
     fn intersect(self: @This(), ray: Ray) f32 {
         var best_t = std.math.inf(f32);
-        for (self.triangles.items) |a| {
+        for (self.triangles) |a| {
             const triangle = Triangle{
-                .v0 = self.vertices.items[a[0]].position,
-                .v1 = self.vertices.items[a[1]].position,
-                .v2 = self.vertices.items[a[2]].position,
+                .v0 = self.vertices[a[0]].position,
+                .v1 = self.vertices[a[1]].position,
+                .v2 = self.vertices[a[2]].position,
             };
             if (triangle.intersect(ray)) |t| {
                 if (t < best_t) {
@@ -201,14 +261,85 @@ const GeometryMesh = struct {
     }
 };
 
+const arrow_points = [_]Vec2{
+    .{ .x = 0.25, .y = 0 },
+    .{ .x = 0.25, .y = 0.05 },
+    .{ .x = 1, .y = 0.05 },
+    .{ .x = 1, .y = 0.10 },
+    .{ .x = 1.2, .y = 0 },
+};
+// std::vector<float2> mace_points             = { { 0.25f, 0 }, { 0.25f, 0.05f },{ 1, 0.05f },{ 1, 0.1f },{ 1.25f, 0.1f }, { 1.25f, 0 } };
+// std::vector<float2> ring_points             = { { +0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1.1f },{ -0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1 } };
+
 const MeshComponent = struct {
     mesh: GeometryMesh,
     base_color: Vec4,
     highlight_color: Vec4,
+
+    fn init(mesh: type, base_color: Vec4, highlight_color: Vec4) @This() {
+        return .{
+            .mesh = .{
+                .vertices = &mesh.vertices,
+                .triangles = &mesh.triangles,
+            },
+            .base_color = base_color,
+            .highlight_color = highlight_color,
+        };
+    }
+
+    fn get(i: InteractionMode) ?MeshComponent {
+        return switch (i) {
+            .None => null,
+            .Translate_x => MeshComponent.init(make_lathed_geometry(
+                .{ .x = 1, .y = 0, .z = 0 },
+                .{ .x = 0, .y = 1, .z = 0 },
+                .{ .x = 0, .y = 0, .z = 1 },
+                16,
+                &arrow_points,
+                0,
+            ), .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 }, .{ .x = 1, .y = 0, .z = 0, .w = 1.0 }),
+            .Translate_y => null,
+            .Translate_z => null,
+            .Translate_yz => null,
+            .Translate_zx => null,
+            .Translate_xy => null,
+            .Translate_xyz => null,
+            .Rotate_x => null,
+            .Rotate_y => null,
+            .Rotate_z => null,
+            .Scale_x => null,
+            .Scale_y => null,
+            .Scale_z => null,
+            .Scale_xyz => null,
+        };
+    }
+    // mesh_components[interact::translate_x]      = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 16, arrow_points), { 1,0.5f,0.5f, 1.f }, { 1,0,0, 1.f } };
+    // mesh_components[interact::translate_y]      = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 16, arrow_points), { 0.5f,1,0.5f, 1.f }, { 0,1,0, 1.f } };
+    // mesh_components[interact::translate_z]      = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, arrow_points), { 0.5f,0.5f,1, 1.f }, { 0,0,1, 1.f } };
+    // mesh_components[interact::translate_yz]     = { make_box_geometry({ -0.01f,0.25,0.25 },{ 0.01f,0.75f,0.75f }), { 0.5f,1,1, 0.5f }, { 0,1,1, 0.6f } };
+    // mesh_components[interact::translate_zx]     = { make_box_geometry({ 0.25,-0.01f,0.25 },{ 0.75f,0.01f,0.75f }), { 1,0.5f,1, 0.5f }, { 1,0,1, 0.6f } };
+    // mesh_components[interact::translate_xy]     = { make_box_geometry({ 0.25,0.25,-0.01f },{ 0.75f,0.75f,0.01f }), { 1,1,0.5f, 0.5f }, { 1,1,0, 0.6f } };
+    // mesh_components[interact::translate_xyz]    = { make_box_geometry({ -0.05f,-0.05f,-0.05f },{ 0.05f,0.05f,0.05f }),{ 0.9f, 0.9f, 0.9f, 0.25f },{ 1,1,1, 0.35f } };
+    // mesh_components[interact::rotate_x]         = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 32, ring_points, 0.003f), { 1, 0.5f, 0.5f, 1.f }, { 1, 0, 0, 1.f } };
+    // mesh_components[interact::rotate_y]         = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 32, ring_points, -0.003f), { 0.5f,1,0.5f, 1.f }, { 0,1,0, 1.f } };
+    // mesh_components[interact::rotate_z]         = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 32, ring_points), { 0.5f,0.5f,1, 1.f }, { 0,0,1, 1.f } };
+    // mesh_components[interact::scale_x]          = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 16, mace_points),{ 1,0.5f,0.5f, 1.f },{ 1,0,0, 1.f } };
+    // mesh_components[interact::scale_y]          = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 16, mace_points),{ 0.5f,1,0.5f, 1.f },{ 0,1,0, 1.f } };
+    // mesh_components[interact::scale_z]          = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, mace_points),{ 0.5f,0.5f,1, 1.f },{ 0,0,1, 1.f } };
+
+    // The only purpose of this is readability: to reduce the total column width of the intersect(...) statements in every gizmo
+    fn intersect(ray: Ray, i: InteractionMode, best_t: f32) ?f32 {
+        if (MeshComponent.get(i)) |c| {
+            const t = c.mesh.intersect(ray);
+            if (t < best_t) {
+                return t;
+            }
+        }
+        return null;
+    }
 };
 
 pub const Context = struct {
-    mesh_components: std.AutoHashMap(InteractionMode, MeshComponent),
     transform_mode: TransformMode = .Translate,
     // std::map<uint32_t, interaction_state> gizmos;
     gizmos: std.AutoHashMap(u32, Interaction),
@@ -225,14 +356,12 @@ pub const Context = struct {
 
     pub fn init(allocator: std.mem.Allocator) @This() {
         return .{
-            .mesh_components = std.AutoHashMap(InteractionMode, MeshComponent).init(allocator),
             .gizmos = std.AutoHashMap(u32, Interaction).init(allocator),
             .drawlist = std.ArrayList(Renderable).init(allocator),
         };
     }
 
     pub fn deinit(self: *@This()) void {
-        self.mesh_components.deinit();
         self.gizmos.deinit();
         self.drawlist.deinit();
     }
@@ -269,17 +398,6 @@ pub const Context = struct {
         return std.math.tan(self.active_state.cam.yfov) * dist * (pixel_scale / self.active_state.viewport_size.y);
     }
 
-    // The only purpose of this is readability: to reduce the total column width of the intersect(...) statements in every gizmo
-    fn intersect(self: @This(), ray: Ray, i: InteractionMode, best_t: f32) ?f32 {
-        if (self.mesh_components.getPtr(i)) |c| {
-            const t = c.mesh.intersect(ray);
-            if (t < best_t) {
-                return t;
-            }
-        }
-        return null;
-    }
-
     fn translation_gizmo(
         self: *@This(),
         name: []const u8,
@@ -309,31 +427,31 @@ pub const Context = struct {
             ray.detransform(draw_scale);
 
             var best_t = std.math.inf(f32);
-            if (self.intersect(ray, .Translate_x, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_x, best_t)) |t| {
                 updated_state = .Translate_x;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_y, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_y, best_t)) |t| {
                 updated_state = .Translate_y;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_z, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_z, best_t)) |t| {
                 updated_state = .Translate_z;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_yz, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_yz, best_t)) |t| {
                 updated_state = .Translate_yz;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_zx, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_zx, best_t)) |t| {
                 updated_state = .Translate_zx;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_xy, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_xy, best_t)) |t| {
                 updated_state = .Translate_xy;
                 best_t = t;
             }
-            if (self.intersect(ray, .Translate_xyz, best_t)) |t| {
+            if (MeshComponent.intersect(ray, .Translate_xyz, best_t)) |t| {
                 updated_state = .Translate_xyz;
                 best_t = t;
             }
@@ -416,17 +534,12 @@ pub const Context = struct {
                 const modelMatrix = p.matrix().mul(scaleMatrix);
 
                 for (draw_interactions) |i| {
-                    if (self.mesh_components.getPtr(i)) |c| {
+                    if (MeshComponent.get(i)) |c| {
                         const r = Renderable{
                             .mesh = c.mesh,
-                            // .color = if (c == g.mode) c.base_color else c.highlight_color,
-                            .color = c.base_color,
+                            .color = if (i == g.mode) c.base_color else c.highlight_color,
+                            .matrix = modelMatrix,
                         };
-                        for (r.mesh.vertices.items) |*v| {
-                            // transform local coordinates into worldspace
-                            v.position = modelMatrix.transform_coord(v.position);
-                            v.normal = modelMatrix.transform_vector(v.normal);
-                        }
                         try self.drawlist.append(r);
                     }
                 }
