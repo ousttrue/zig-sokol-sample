@@ -12,6 +12,17 @@ pub const RenderTarget = enum {
     OffScreen,
 };
 
+pub const Frustum = struct {
+    near_top_left: Vec3,
+    near_top_right: Vec3,
+    near_bottom_left: Vec3,
+    near_bottom_right: Vec3,
+    far_top_left: Vec3,
+    far_top_right: Vec3,
+    far_bottom_left: Vec3,
+    far_bottom_right: Vec3,
+};
+
 pub const Ray = struct {
     origin: Vec3,
     direction: Vec3,
@@ -78,7 +89,7 @@ pub const Camera = struct {
         self.transform.translation.z = m.m[14];
     }
 
-    pub fn update(self: *@This(), input_state: InputState) void {
+    pub fn update(self: *@This(), input_state: InputState) Vec2 {
         const dx = input_state.mouse_x - self.input_state.mouse_x;
         const dy = input_state.mouse_y - self.input_state.mouse_y;
         self.input_state = input_state;
@@ -98,16 +109,19 @@ pub const Camera = struct {
         }
         self.update_projection_matrix();
         self.update_transform();
+
+        return .{
+            .x = (input_state.mouse_x / input_state.screen_width) * 2 - 1,
+            .y = -((input_state.mouse_y / input_state.screen_height) * 2 - 1),
+        };
     }
 
     pub fn ray(self: @This(), mouse_cursor: Vec2) Ray {
-        const mx = mouse_cursor.x / self.input_state.screen_width * 2 - 1;
-        const my = mouse_cursor.y / self.input_state.screen_height * 2 - 1;
-
-        const h = std.math.tan(self.yFov / 2);
+        const y = std.math.tan(self.yFov / 2);
+        const x = y * self.input_state.aspect();
         const dir = Vec3{
-            .x = mx * h / self.input_state.screen_height * self.input_state.screen_width,
-            .y = -my * h,
+            .x = x * (mouse_cursor.x / self.input_state.screen_width * 2 - 1),
+            .y = y * -(mouse_cursor.y / self.input_state.screen_height * 2 - 1),
             .z = -1,
         };
 
@@ -116,6 +130,59 @@ pub const Camera = struct {
         return .{
             .origin = self.transform.translation,
             .direction = dir_cursor,
+        };
+    }
+
+    pub fn frustum(self: @This()) Frustum {
+        const y = std.math.tan(self.yFov / 2);
+        const x = y * self.input_state.aspect();
+        const near_x = x * self.near_clip;
+        const near_y = y * self.near_clip;
+        const far_x = x * self.far_clip;
+        const far_y = y * self.far_clip;
+        return .{
+            // near
+            .near_top_left = Vec3{
+                .x = -near_x,
+                .y = near_y,
+                .z = -self.near_clip,
+            },
+            .near_top_right = Vec3{
+                .x = near_x,
+                .y = near_y,
+                .z = -self.near_clip,
+            },
+            .near_bottom_left = Vec3{
+                .x = -near_x,
+                .y = -near_y,
+                .z = -self.near_clip,
+            },
+            .near_bottom_right = Vec3{
+                .x = near_x,
+                .y = -near_y,
+                .z = -self.near_clip,
+            },
+            // far
+            .far_top_left = Vec3{
+                .x = -far_x,
+                .y = far_y,
+                .z = -self.far_clip,
+            },
+            .far_top_right = Vec3{
+                .x = far_x,
+                .y = far_y,
+                .z = -self.far_clip,
+            },
+            .far_bottom_left = Vec3{
+                .x = -far_x,
+                .y = -far_y,
+                .z = -self.far_clip,
+            },
+            .far_bottom_right = Vec3{
+                .x = far_x,
+                .y = -far_y,
+                .z = -self.far_clip,
+            },
         };
     }
 };

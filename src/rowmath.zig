@@ -35,10 +35,7 @@ pub const Vec3 = extern struct {
     z: f32,
 
     pub const one = Vec3{ .x = 1, .y = 1, .z = 1 };
-
-    pub fn zero() Vec3 {
-        return Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
-    }
+    pub const zero = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
 
     pub fn new(x: f32, y: f32, z: f32) Vec3 {
         return Vec3{ .x = x, .y = y, .z = z };
@@ -73,7 +70,7 @@ pub const Vec3 = extern struct {
         if (l != 0.0) {
             return Vec3{ .x = v.x / l, .y = v.y / l, .z = v.z / l };
         } else {
-            return Vec3.zero();
+            return Vec3.zero;
         }
     }
 
@@ -502,7 +499,7 @@ pub const Quat = struct {
 
 pub const RigidTransform = struct {
     rotation: Quat = Quat.indentity,
-    translation: Vec3 = Vec3.zero(),
+    translation: Vec3 = Vec3.zero,
 
     pub fn localToWorld(self: @This()) Mat4 {
         var m = self.rotation.matrix();

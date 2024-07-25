@@ -11,6 +11,54 @@ const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("rendertarget.zig").RenderTarget;
 const linegeom = @import("linegeom.zig");
 const tinygizmo = @import("tinygizmo.zig");
+const rowmath = @import("rowmath.zig");
+const Vec3 = rowmath.Vec3;
+const Vec2 = rowmath.Vec2;
+
+fn draw_line(v0: Vec3, v1: Vec3) void {
+    sokol.gl.v3f(v0.x, v0.y, v0.z);
+    sokol.gl.v3f(v1.x, v1.y, v1.z);
+}
+
+fn is_contain(pos: ig.ImVec2, size: ig.ImVec2, p: ig.ImVec2) bool {
+    return (p.x >= pos.x and p.x <= (pos.x + size.x)) and (p.y >= pos.y and p.y <= (pos.y + size.y));
+}
+
+fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
+    const frustom = camera.frustum();
+
+    sokol.gl.pushMatrix();
+    defer sokol.gl.popMatrix();
+    sokol.gl.multMatrix(&camera.transform.localToWorld().m[0]);
+
+    sokol.gl.beginLines();
+    sokol.gl.c3f(1, 1, 1);
+
+    draw_line(frustom.far_top_left, frustom.far_top_right);
+    draw_line(frustom.far_top_right, frustom.far_bottom_right);
+    draw_line(frustom.far_bottom_right, frustom.far_bottom_left);
+    draw_line(frustom.far_bottom_left, frustom.far_top_left);
+
+    draw_line(frustom.near_top_left, frustom.near_top_right);
+    draw_line(frustom.near_top_right, frustom.near_bottom_right);
+    draw_line(frustom.near_bottom_right, frustom.near_bottom_left);
+    draw_line(frustom.near_bottom_left, frustom.near_top_left);
+
+    draw_line(frustom.near_top_left, frustom.far_top_left);
+    draw_line(frustom.near_top_right, frustom.far_top_right);
+    draw_line(frustom.near_bottom_left, frustom.far_bottom_left);
+    draw_line(frustom.near_bottom_right, frustom.far_bottom_right);
+
+    if (_cursor) |cursor| {
+        draw_line(Vec3.zero, .{
+            .x = frustom.far_top_right.x * cursor.x,
+            .y = frustom.far_top_right.y * cursor.y,
+            .z = -camera.far_clip,
+        });
+    }
+
+    sokol.gl.end();
+}
 
 const RenderView = struct {
     camera: Camera = Camera{},
@@ -29,8 +77,8 @@ const RenderView = struct {
     },
     sgl_ctx: sokol.gl.Context = .{},
 
-    fn update(self: *@This(), input: InputState) void {
-        self.camera.update(input);
+    fn update(self: *@This(), input: InputState) Vec2 {
+        return self.camera.update(input);
     }
 
     fn begin(self: *@This(), _rendertarget: ?RenderTarget) void {
@@ -67,7 +115,12 @@ const RenderView = struct {
 
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
-    var display = RenderView{};
+    var display = RenderView{
+        .camera = .{
+            .near_clip = 0.5,
+            .far_clip = 30,
+        },
+    };
     var offscreen = RenderView{};
     var rendertarget: ?RenderTarget = null;
     var gizmo_ctx: tinygizmo.Context = undefined;
@@ -132,7 +185,8 @@ export fn frame() void {
         .delta_time = sokol.app.frameDuration(),
         .dpi_scale = sokol.app.dpiScale(),
     });
-    state.display.update(InputState.from_imgui());
+    const display_cursor = state.display.update(InputState.from_imgui());
+    var offscreen_cursor: Vec2 = undefined;
 
     const io = ig.igGetIO().*;
     if (!io.WantCaptureMouse) {
@@ -158,6 +212,7 @@ export fn frame() void {
         ig.igEnd();
     }
 
+    var hover = false;
     {
         ig.igSetNextWindowPos(.{ .x = 10, .y = 100 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
         ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
@@ -171,6 +226,7 @@ export fn frame() void {
             ig.igGetCursorScreenPos(&pos);
             var size = ig.ImVec2{};
             ig.igGetContentRegionAvail(&size);
+            hover = is_contain(pos, size, io.MousePos);
 
             if (size.x > 0 and size.y > 0) {
                 if (get_or_create(@intFromFloat(size.x), @intFromFloat(size.y))) |rendertarget| {
@@ -185,12 +241,14 @@ export fn frame() void {
                     );
 
                     Custom_ButtonBehaviorMiddleRight();
-                    state.offscreen.update(InputState.from_rendertarget(pos, size));
+                    offscreen_cursor = state.offscreen.update(InputState.from_rendertarget(pos, size));
+
                     {
                         // render offscreen
                         state.offscreen.begin(rendertarget);
                         defer state.offscreen.end(rendertarget);
                         scene.draw(state.offscreen.camera, .OffScreen);
+                        draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
                     }
                 }
             }
@@ -204,6 +262,7 @@ export fn frame() void {
         state.display.begin(null);
         defer state.display.end(null);
         scene.draw(state.display.camera, .Display);
+        draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
 
         for (state.gizmo_ctx.drawlist.items) |m| {
             sokol.gl.matrixModeModelview();
