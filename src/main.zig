@@ -119,9 +119,22 @@ const state = struct {
         .camera = .{
             .near_clip = 0.5,
             .far_clip = 15,
+            .transform = .{
+                .translation = .{
+                    .x = 0,
+                    .y = 1,
+                    .z = 5,
+                },
+            },
         },
     };
-    var offscreen = RenderView{};
+    var offscreen = RenderView{
+        .camera = .{
+            .transform = .{
+                .translation = .{ .x = 0, .y = 1, .z = 15 },
+            },
+        },
+    };
     var rendertarget: ?RenderTarget = null;
     var gizmo_ctx: tinygizmo.Context = undefined;
 };
@@ -274,10 +287,16 @@ export fn frame() void {
             sokol.gl.multMatrix(&m.matrix.m[0]);
             sokol.gl.beginTriangles();
             defer sokol.gl.end();
-            sokol.gl.c4f(m.color.x, m.color.y, m.color.z, m.color.w);
-            for (m.mesh.triangles) |triangle| {
+            const color = m.color();
+            sokol.gl.c4f(
+                color.x,
+                color.y,
+                color.z,
+                color.w,
+            );
+            for (m.mesh.mesh.triangles) |triangle| {
                 for (triangle) |i| {
-                    const p = m.mesh.vertices[i].position;
+                    const p = m.mesh.mesh.vertices[i].position;
                     sokol.gl.v3f(p.x, p.y, p.z);
                 }
             }

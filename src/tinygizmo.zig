@@ -63,9 +63,23 @@ pub const ApplicationState = struct {
 pub const TransformMode = enum { Translate, Rotate, Scale };
 
 const Renderable = struct {
-    mesh: GeometryMesh,
-    color: Vec4,
+    mesh: MeshComponent,
     matrix: Mat4,
+    hover: bool,
+    active: bool,
+
+    pub fn color(self: @This()) Vec4 {
+        if (self.hover) {
+            return .{
+                .x = std.math.lerp(self.mesh.base_color.x, 1, 0.5),
+                .y = std.math.lerp(self.mesh.base_color.y, 1, 0.5),
+                .z = std.math.lerp(self.mesh.base_color.z, 1, 0.5),
+                .w = std.math.lerp(self.mesh.base_color.w, 1, 0.5),
+            };
+        } else {
+            return self.mesh.base_color;
+        }
+    }
 };
 
 // 32 bit Fowler–Noll–Vo Hash
@@ -109,7 +123,7 @@ const Interaction = struct {
     // Flag to indicate if the gizmo is being actively manipulated
     active: bool = false,
     // Flag to indicate if the gizmo is being hovered
-    hover: bool = false,
+    hover: InteractionMode = .None,
     // Original position of an object being manipulated with a gizmo
     original_position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     // Original orientation of an object being manipulated with a gizmo
@@ -259,7 +273,8 @@ fn make_box_geometry(a: Vec3, b: Vec3) type {
 const GeometryMesh = struct {
     vertices: []const GeometryVertex,
     triangles: []const [3]u16,
-    fn intersect(self: @This(), ray: Ray) f32 {
+
+    fn intersect(self: @This(), ray: Ray) ?f32 {
         var best_t = std.math.inf(f32);
         for (self.triangles) |a| {
             const triangle = Triangle{
@@ -273,7 +288,7 @@ const GeometryMesh = struct {
                 }
             }
         }
-        return best_t;
+        return if (best_t == std.math.inf(f32)) null else best_t;
     }
 };
 
@@ -287,20 +302,13 @@ const ARROW_POINTS = [_]Vec2{
 // std::vector<float2> mace_points             = { { 0.25f, 0 }, { 0.25f, 0.05f },{ 1, 0.05f },{ 1, 0.1f },{ 1.25f, 0.1f }, { 1.25f, 0 } };
 // std::vector<float2> ring_points             = { { +0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1.1f },{ -0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1 } };
 
-const BASE_RED: Vec4 = .{ .x = 1, .y = 0.5, .z = 0.5, .w = 1.0 };
-const HIGH_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
-const BASE_GREEN: Vec4 = .{ .x = 0.5, .y = 1, .z = 0.5, .w = 1.0 };
-const HIGH_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
-const BASE_BLUE: Vec4 = .{ .x = 0.5, .y = 0.5, .z = 1, .w = 1.0 };
-const HIGH_BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
-const BASE_CYAN: Vec4 = .{ .x = 0.5, .y = 1, .z = 1, .w = 0.5 };
-const HIGH_CYAN: Vec4 = .{ .x = 0, .y = 1, .z = 1, .w = 0.6 };
-const BASE_MAGENTA: Vec4 = .{ .x = 1, .y = 0.5, .z = 1, .w = 0.5 };
-const HIGH_MAGENTA: Vec4 = .{ .x = 1, .y = 0, .z = 1, .w = 0.6 };
-const BASE_YELLOW: Vec4 = .{ .x = 1, .y = 1, .z = 0.5, .w = 0.5 };
-const HIGH_YELLOW: Vec4 = .{ .x = 1, .y = 1, .z = 0, .w = 0.6 };
-const BASE_GRAY: Vec4 = .{ .x = 0.9, .y = 0.9, .z = 0.9, .w = 0.25 };
-const HIGH_GRAY: Vec4 = .{ .x = 1, .y = 1, .z = 1, .w = 0.35 };
+const BASE_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
+const BASE_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
+const BASE_BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
+const BASE_CYAN: Vec4 = .{ .x = 0, .y = 0.5, .z = 0.5, .w = 1.0 };
+const BASE_MAGENTA: Vec4 = .{ .x = 0.5, .y = 0, .z = 0.5, .w = 1.0 };
+const BASE_YELLOW: Vec4 = .{ .x = 0.3, .y = 0.3, .z = 0, .w = 1.0 };
+const BASE_GRAY: Vec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
 
 const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
 const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
@@ -309,33 +317,28 @@ const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
 const MeshComponent = struct {
     mesh: GeometryMesh,
     base_color: Vec4,
-    highlight_color: Vec4,
 
-    fn init(mesh: type, base_color: Vec4, highlight_color: Vec4) @This() {
+    fn init(mesh: type, base_color: Vec4) @This() {
         return .{
             .mesh = .{
                 .vertices = &mesh.vertices,
                 .triangles = &mesh.triangles,
             },
             .base_color = base_color,
-            .highlight_color = highlight_color,
         };
     }
 
     const translate_x = MeshComponent.init(
         make_lathed_geometry(RIGHT, UP, FORWARD, 16, &ARROW_POINTS, 0),
         BASE_RED,
-        HIGH_RED,
     );
     const translate_y = MeshComponent.init(
         make_lathed_geometry(UP, FORWARD, RIGHT, 16, &ARROW_POINTS, 0),
         BASE_GREEN,
-        HIGH_GREEN,
     );
     const translate_z = MeshComponent.init(
         make_lathed_geometry(FORWARD, RIGHT, UP, 16, &ARROW_POINTS, 0),
         BASE_BLUE,
-        HIGH_BLUE,
     );
     const translate_yz = MeshComponent.init(
         make_box_geometry(
@@ -343,7 +346,6 @@ const MeshComponent = struct {
             .{ .x = 0.01, .y = 0.75, .z = 0.75 },
         ),
         BASE_CYAN,
-        HIGH_CYAN,
     );
     const translate_zx = MeshComponent.init(
         make_box_geometry(
@@ -351,7 +353,6 @@ const MeshComponent = struct {
             .{ .x = 0.75, .y = 0.01, .z = 0.75 },
         ),
         BASE_MAGENTA,
-        HIGH_MAGENTA,
     );
     const translate_xy = MeshComponent.init(
         make_box_geometry(
@@ -359,7 +360,6 @@ const MeshComponent = struct {
             .{ .x = 0.75, .y = 0.75, .z = 0.01 },
         ),
         BASE_YELLOW,
-        HIGH_YELLOW,
     );
     const translate_xyz = MeshComponent.init(
         make_box_geometry(
@@ -367,7 +367,6 @@ const MeshComponent = struct {
             .{ .x = 0.05, .y = 0.05, .z = 0.05 },
         ),
         BASE_GRAY,
-        HIGH_GRAY,
     );
     fn get(i: InteractionMode) ?MeshComponent {
         return switch (i) {
@@ -396,14 +395,17 @@ const MeshComponent = struct {
     // mesh_components[interact::scale_z]          = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, mace_points),{ 0.5f,0.5f,1, 1.f },{ 0,0,1, 1.f } };
 
     // The only purpose of this is readability: to reduce the total column width of the intersect(...) statements in every gizmo
-    fn intersect(ray: Ray, i: InteractionMode, best_t: f32) ?f32 {
-        if (MeshComponent.get(i)) |c| {
-            const t = c.mesh.intersect(ray);
-            if (t < best_t) {
-                return t;
-            }
-        }
-        return null;
+    // fn intersect(ray: Ray, i: InteractionMode, best_t: f32) ?f32 {
+    //     if (MeshComponent.get(i)) |c| {
+    //         const t = c.mesh.intersect(ray);
+    //         if (t < best_t) {
+    //             return t;
+    //         }
+    //     }
+    //     return null;
+    // }
+    fn intersect(self: @This(), ray: Ray) ?f32 {
+        return self.mesh.intersect(ray);
     }
 };
 
@@ -503,33 +505,48 @@ pub const Context = struct {
             ray.descale(draw_scale);
 
             var best_t = std.math.inf(f32);
-            if (MeshComponent.intersect(ray, .Translate_x, best_t)) |t| {
-                updated_state = .Translate_x;
-                best_t = t;
+
+            if (MeshComponent.translate_x.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_x;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_y, best_t)) |t| {
-                updated_state = .Translate_y;
-                best_t = t;
+            if (MeshComponent.translate_y.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_y;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_z, best_t)) |t| {
-                updated_state = .Translate_z;
-                best_t = t;
+            if (MeshComponent.translate_z.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_z;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_yz, best_t)) |t| {
-                updated_state = .Translate_yz;
-                best_t = t;
+            if (MeshComponent.translate_yz.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_yz;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_zx, best_t)) |t| {
-                updated_state = .Translate_zx;
-                best_t = t;
+            if (MeshComponent.translate_zx.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_zx;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_xy, best_t)) |t| {
-                updated_state = .Translate_xy;
-                best_t = t;
+            if (MeshComponent.translate_xy.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_xy;
+                    best_t = t;
+                }
             }
-            if (MeshComponent.intersect(ray, .Translate_xyz, best_t)) |t| {
-                updated_state = .Translate_xyz;
-                best_t = t;
+            if (MeshComponent.translate_xyz.intersect(ray)) |t| {
+                if (t < best_t) {
+                    updated_state = .Translate_xyz;
+                    best_t = t;
+                }
             }
 
             if (self.has_clicked) {
@@ -547,7 +564,6 @@ pub const Context = struct {
                 }
             }
 
-            g.hover = !(best_t == std.math.inf(f32));
             const axes = if (self.local_toggle) [3]Vec3{
                 p.rigid_transform.rotation.dirX(),
                 p.rigid_transform.rotation.dirY(),
@@ -604,9 +620,10 @@ pub const Context = struct {
             for (draw_interactions) |i| {
                 if (MeshComponent.get(i)) |c| {
                     const r = Renderable{
-                        .mesh = c.mesh,
-                        .color = if (i == g.mode) c.base_color else c.highlight_color,
+                        .mesh = c,
                         .matrix = modelMatrix,
+                        .hover = i == updated_state,
+                        .active = false,
                     };
                     try self.drawlist.append(r);
                 }
