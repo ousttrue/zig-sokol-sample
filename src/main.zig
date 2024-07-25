@@ -32,6 +32,7 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     sokol.gl.multMatrix(&camera.transform.localToWorld().m[0]);
 
     sokol.gl.beginLines();
+    defer sokol.gl.end();
     sokol.gl.c3f(1, 1, 1);
 
     draw_line(frustom.far_top_left, frustom.far_top_right);
@@ -44,20 +45,19 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     draw_line(frustom.near_bottom_right, frustom.near_bottom_left);
     draw_line(frustom.near_bottom_left, frustom.near_top_left);
 
-    draw_line(frustom.near_top_left, frustom.far_top_left);
-    draw_line(frustom.near_top_right, frustom.far_top_right);
-    draw_line(frustom.near_bottom_left, frustom.far_bottom_left);
-    draw_line(frustom.near_bottom_right, frustom.far_bottom_right);
+    draw_line(Vec3.zero, frustom.far_top_left);
+    draw_line(Vec3.zero, frustom.far_top_right);
+    draw_line(Vec3.zero, frustom.far_bottom_left);
+    draw_line(Vec3.zero, frustom.far_bottom_right);
 
     if (_cursor) |cursor| {
+        sokol.gl.c3f(1, 1, 0);
         draw_line(Vec3.zero, .{
             .x = frustom.far_top_right.x * cursor.x,
             .y = frustom.far_top_right.y * cursor.y,
-            .z = -camera.far_clip,
+            .z = frustom.far_top_right.z,
         });
     }
-
-    sokol.gl.end();
 }
 
 const RenderView = struct {
@@ -95,9 +95,9 @@ const RenderView = struct {
 
         sokol.gl.defaults();
         sokol.gl.matrixModeProjection();
-        sokol.gl.sgl_mult_matrix(&self.camera.projection.m[0]);
+        sokol.gl.multMatrix(&self.camera.projection.m[0]);
         sokol.gl.matrixModeModelview();
-        sokol.gl.sgl_mult_matrix(&self.camera.transform.worldToLocal().m[0]);
+        sokol.gl.multMatrix(&self.camera.transform.worldToLocal().m[0]);
     }
 
     fn end(self: *@This(), _rendertarget: ?RenderTarget) void {
@@ -118,7 +118,7 @@ const state = struct {
     var display = RenderView{
         .camera = .{
             .near_clip = 0.5,
-            .far_clip = 30,
+            .far_clip = 15,
         },
     };
     var offscreen = RenderView{};
@@ -140,10 +140,6 @@ pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
     state.rendertarget = rendertarget;
     return rendertarget;
 }
-
-// pub fn end_rendertarget() void {
-//     sg.endPass();
-// }
 
 export fn init() void {
     // state.allocator = std.heap.page_allocator;
@@ -247,6 +243,10 @@ export fn frame() void {
                         // render offscreen
                         state.offscreen.begin(rendertarget);
                         defer state.offscreen.end(rendertarget);
+
+                        // grid
+                        linegeom.grid();
+
                         scene.draw(state.offscreen.camera, .OffScreen);
                         draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
                     }
@@ -261,14 +261,19 @@ export fn frame() void {
         // render background
         state.display.begin(null);
         defer state.display.end(null);
+
+        // grid
+        linegeom.grid();
+
         scene.draw(state.display.camera, .Display);
         draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
-
         for (state.gizmo_ctx.drawlist.items) |m| {
             sokol.gl.matrixModeModelview();
             sokol.gl.pushMatrix();
+            defer sokol.gl.popMatrix();
             sokol.gl.multMatrix(&m.matrix.m[0]);
             sokol.gl.beginTriangles();
+            defer sokol.gl.end();
             sokol.gl.c4f(m.color.x, m.color.y, m.color.z, m.color.w);
             for (m.mesh.triangles) |triangle| {
                 for (triangle) |i| {
@@ -276,8 +281,6 @@ export fn frame() void {
                     sokol.gl.v3f(p.x, p.y, p.z);
                 }
             }
-            sokol.gl.end();
-            sokol.gl.popMatrix();
         }
     }
     sg.commit();

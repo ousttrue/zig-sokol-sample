@@ -56,7 +56,7 @@ pub const Camera = struct {
 
     // projection
     yFov: f32 = std.math.degreesToRadians(60.0),
-    near_clip: f32 = 0.01,
+    near_clip: f32 = 0.1,
     far_clip: f32 = 50.0,
     projection: Mat4 = Mat4.identity(),
 
@@ -71,8 +71,8 @@ pub const Camera = struct {
     transform: RigidTransform = .{},
 
     pub fn update_projection_matrix(self: *@This()) void {
-        self.projection = Mat4.persp(
-            std.math.radiansToDegrees(self.yFov),
+        self.projection = Mat4.perspective(
+            self.yFov,
             self.input_state.aspect(),
             self.near_clip,
             self.far_clip,

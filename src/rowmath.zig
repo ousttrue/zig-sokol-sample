@@ -194,11 +194,11 @@ pub const Mat4 = extern struct {
         };
     }
 
-    pub fn persp(fovDegree: f32, aspect: f32, near: f32, far: f32) Mat4 {
+    pub fn perspective(fov: f32, aspect: f32, near: f32, far: f32) Mat4 {
         var res = Mat4.identity();
-        const t = std.math.tan(fovDegree * (std.math.pi / 360.0));
-        res.m[0] = 1.0 / t;
-        res.m[5] = aspect / t;
+        const t = std.math.tan(fov / 2);
+        res.m[0] = 1.0 / t / aspect;
+        res.m[5] = 1 / t;
         res.m[11] = -1.0;
         res.m[10] = (near + far) / (near - far);
         res.m[14] = (2.0 * near * far) / (near - far);
@@ -502,19 +502,15 @@ pub const RigidTransform = struct {
     translation: Vec3 = Vec3.zero,
 
     pub fn localToWorld(self: @This()) Mat4 {
-        var m = self.rotation.matrix();
-        m.m[12] = self.translation.x;
-        m.m[13] = self.translation.y;
-        m.m[14] = self.translation.z;
-        return m;
+        const r = self.rotation.matrix();
+        const t = Mat4.translate(self.translation);
+        return r.mul(t);
     }
 
     pub fn worldToLocal(self: @This()) Mat4 {
-        var m = Mat4.identity();
-        m.m[12] = -self.translation.x;
-        m.m[13] = -self.translation.y;
-        m.m[14] = -self.translation.z;
-        return m.mul(self.rotation.conj().matrix());
+        const t = Mat4.translate(self.translation.negate());
+        const r = self.rotation.conj().matrix();
+        return t.mul(r);
     }
 };
 

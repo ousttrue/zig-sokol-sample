@@ -6,13 +6,14 @@ const Mat4 = rowmath.Mat4;
 const shd = @import("cube.glsl.zig");
 const InputState = @import("input_state.zig").InputState;
 const Camera = @import("camera.zig").Camera;
-const linegeom = @import("linegeom.zig");
+const RenderTarget = @import("camera.zig").RenderTarget;
 
 const state = struct {
     var pass_action: sg.PassAction = .{};
     var rx: f32 = 0.0;
     var ry: f32 = 0.0;
     var pip: sg.Pipeline = .{};
+    var offscreen_pip: sg.Pipeline = .{};
     var bind: sg.Bindings = .{};
 };
 
@@ -79,6 +80,16 @@ pub fn setup() void {
     pip_desc.layout.attrs[shd.ATTR_vs_position].format = .FLOAT3;
     pip_desc.layout.attrs[shd.ATTR_vs_color0].format = .FLOAT4;
     state.pip = sg.makePipeline(pip_desc);
+
+    // offscreen_pip
+    pip_desc.colors[0].pixel_format = .RGBA8;
+    pip_desc.sample_count = 1;
+    pip_desc.depth = .{
+        .pixel_format = .DEPTH,
+        .compare = .LESS_EQUAL,
+        .write_enabled = true,
+    };
+    state.offscreen_pip = sg.makePipeline(pip_desc);
 }
 
 fn mat4_to_array(m: *const Mat4) *const [16]f32 {
@@ -86,26 +97,27 @@ fn mat4_to_array(m: *const Mat4) *const [16]f32 {
 }
 
 fn computeVsParams(rx: f32, ry: f32, camera: Camera) shd.VsParams {
-    const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
-    const model = Mat4.mul(rxm, rym);
+    _ = ry; // autofix
+    _ = rx; // autofix
+    // const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    // const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    // const model = Mat4.mul(rxm, rym);
     const view = camera.transform.worldToLocal();
-    return shd.VsParams{ .mvp = mat4_to_array(&model.mul(view.mul(camera.projection))).* };
+    // return shd.VsParams{ .mvp = mat4_to_array(&model.mul(view.mul(camera.projection))).* };
+    return shd.VsParams{ .mvp = mat4_to_array(&view.mul(camera.projection)).* };
 }
 
-pub fn draw(camera: Camera) void {
-
-    // grid
-    linegeom.begin(camera);
-    linegeom.grid();
-    linegeom.end();
+pub fn draw(camera: Camera, renderTarget: RenderTarget) void {
+    switch (renderTarget) {
+        .Display => sg.applyPipeline(state.pip),
+        .OffScreen => sg.applyPipeline(state.offscreen_pip),
+    }
 
     // cube
     const dt: f32 = @floatCast(sokol.app.frameDuration() * 60);
     state.rx += 1.0 * dt;
     state.ry += 2.0 * dt;
     const vs_params = computeVsParams(state.rx, state.ry, camera);
-    sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
     sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
