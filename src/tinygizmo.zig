@@ -119,9 +119,13 @@ const InteractionMode = enum {
     Scale_xyz,
 };
 
+const Drag = struct {
+    mode: InteractionMode = .None,
+    // Offset from position of grabbed object to coordinates of clicked point
+    click_offset: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+};
+
 const Interaction = struct {
-    // Flag to indicate if the gizmo is being actively manipulated
-    active: bool = false,
     // Flag to indicate if the gizmo is being hovered
     hover: InteractionMode = .None,
     // Original position of an object being manipulated with a gizmo
@@ -130,10 +134,8 @@ const Interaction = struct {
     original_orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
     // Original scale of an object being manipulated with a gizmo
     original_scale: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // Offset from position of grabbed object to coordinates of clicked point
-    click_offset: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     // Currently active component
-    mode: InteractionMode = .None,
+    active: ?Drag = null,
 };
 
 const GeometryVertex = struct {
@@ -437,6 +439,7 @@ pub const Context = struct {
     }
 
     pub fn update(self: *@This(), state: ApplicationState) void {
+        self.last_state = self.active_state;
         self.active_state = state;
         self.local_toggle = if (!self.last_state.hotkey_local and self.active_state.hotkey_local and self.active_state.hotkey_ctrl) !self.local_toggle else self.local_toggle;
         self.has_clicked = !self.last_state.mouse_left and self.active_state.mouse_left;
@@ -495,54 +498,51 @@ pub const Context = struct {
 
         // interaction_mode will only change on clicked
         var g = self.get_or_add(id);
-        if (self.has_clicked) {
-            g.mode = .None;
-        }
 
         {
             var updated_state: InteractionMode = .None;
-            var ray = detransform(p, self.active_state.ray);
-            ray.descale(draw_scale);
+            var local_ray = detransform(p, self.active_state.ray);
+            local_ray.descale(draw_scale);
 
             var best_t = std.math.inf(f32);
 
-            if (MeshComponent.translate_x.intersect(ray)) |t| {
+            if (MeshComponent.translate_x.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_x;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_y.intersect(ray)) |t| {
+            if (MeshComponent.translate_y.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_y;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_z.intersect(ray)) |t| {
+            if (MeshComponent.translate_z.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_z;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_yz.intersect(ray)) |t| {
+            if (MeshComponent.translate_yz.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_yz;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_zx.intersect(ray)) |t| {
+            if (MeshComponent.translate_zx.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_zx;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_xy.intersect(ray)) |t| {
+            if (MeshComponent.translate_xy.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_xy;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_xyz.intersect(ray)) |t| {
+            if (MeshComponent.translate_xyz.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_xyz;
                     best_t = t;
@@ -550,17 +550,16 @@ pub const Context = struct {
             }
 
             if (self.has_clicked) {
-                g.mode = updated_state;
-                if (g.mode != .None) {
-                    ray.scale(draw_scale);
-                    if (self.local_toggle) {
-                        g.click_offset = p.transform_vector(ray.point(best_t));
-                    } else {
-                        g.click_offset = ray.point(best_t);
-                    }
-                    g.active = true;
-                } else {
-                    g.active = false;
+                g.active = null;
+                if (updated_state != .None) {
+                    local_ray.scale(draw_scale);
+                    const point = local_ray.point(best_t);
+                    const active = Drag{
+                        .mode = updated_state,
+                        .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
+                    };
+                    g.active = active;
+                    std.debug.print("{}\n", .{active});
                 }
             }
 
@@ -574,30 +573,31 @@ pub const Context = struct {
                 .{ .x = 0, .y = 0, .z = 1 },
             };
 
-            if (g.active and self.active_state.mouse_left) {
-                var position = p.rigid_transform.translation.add(g.click_offset);
-                if (switch (g.mode) {
-                    .Translate_x => self.axis_translation_dragger(g, axes[0], position),
-                    .Translate_y => self.axis_translation_dragger(g, axes[1], position),
-                    .Translate_z => self.axis_translation_dragger(g, axes[2], position),
-                    .Translate_yz => self.plane_translation_dragger(g, axes[0], position),
-                    .Translate_zx => self.plane_translation_dragger(g, axes[1], position),
-                    .Translate_xy => self.plane_translation_dragger(g, axes[2], position),
-                    .Translate_xyz => self.plane_translation_dragger(
-                        g,
-                        self.active_state.cam_dir, //.orientation.dirZ().negate(),
-                        position,
-                    ),
-                    else => @panic("switch"),
-                }) |new_position| {
-                    position = new_position;
+            if (g.active) |active| {
+                if (self.active_state.mouse_left) {
+                    var position = p.rigid_transform.translation.add(active.click_offset);
+                    if (switch (active.mode) {
+                        .Translate_x => self.axis_translation_dragger(g, axes[0], position),
+                        .Translate_y => self.axis_translation_dragger(g, axes[1], position),
+                        .Translate_z => self.axis_translation_dragger(g, axes[2], position),
+                        .Translate_yz => self.plane_translation_dragger(g, axes[0], position),
+                        .Translate_zx => self.plane_translation_dragger(g, axes[1], position),
+                        .Translate_xy => self.plane_translation_dragger(g, axes[2], position),
+                        .Translate_xyz => self.plane_translation_dragger(
+                            g,
+                            self.active_state.cam_dir, //.orientation.dirZ().negate(),
+                            position,
+                        ),
+                        else => @panic("switch"),
+                    }) |new_position| {
+                        position = new_position;
+                    }
+                    p.rigid_transform.translation = position.sub(active.click_offset);
                 }
-                p.rigid_transform.translation = position.sub(g.click_offset);
             }
 
             if (self.has_released) {
-                g.mode = .None;
-                g.active = false;
+                g.active = null;
             }
 
             const draw_interactions = [_]InteractionMode{
