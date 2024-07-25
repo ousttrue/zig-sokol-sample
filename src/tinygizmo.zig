@@ -32,7 +32,6 @@ pub const ApplicationState = struct {
     // 3d viewport used to render the view
     viewport_size: Vec2,
     // Used for constructing inverse view projection for raycasting onto gizmo geometry
-    // cam: CameraParameters = .{},
     cam_dir: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     cam_yFov: f32 = 0,
     // world-space ray (from camera position to mouse cursor)
@@ -40,16 +39,8 @@ pub const ApplicationState = struct {
         .origin = .{ .x = 0, .y = 0, .z = 0 },
         .direction = .{ .x = 0, .y = 0, .z = 0 },
     },
-    // ray_origin: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // ray_direction: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     // mouse
     mouse_left: bool = false,
-    // keyboard
-    hotkey_translate: bool = false,
-    hotkey_rotate: bool = false,
-    hotkey_scale: bool = false,
-    hotkey_local: bool = false,
-    hotkey_ctrl: bool = false,
     // If > 0.f, the gizmos are drawn scale-invariant with a screenspace value defined here
     screenspace_scale: f32 = 0,
     // World-scale units used for snapping translation
@@ -59,8 +50,6 @@ pub const ApplicationState = struct {
     // Radians used for snapping rotation quaternions (i.e. PI/8 or PI/16)
     snap_rotation: f32 = 0,
 };
-
-pub const TransformMode = enum { Translate, Rotate, Scale };
 
 const Renderable = struct {
     mesh: MeshComponent,
@@ -412,8 +401,6 @@ const MeshComponent = struct {
 };
 
 pub const Context = struct {
-    transform_mode: TransformMode = .Translate,
-    // std::map<uint32_t, interaction_state> gizmos;
     gizmos: std.AutoHashMap(u32, Interaction),
     active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
     last_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
@@ -423,7 +410,6 @@ pub const Context = struct {
     has_clicked: bool = false,
     // State to describe if the user has released the left mouse button during the last frame
     has_released: bool = false,
-    mode: TransformMode = .Translate,
     drawlist: std.ArrayList(Renderable),
 
     pub fn init(allocator: std.mem.Allocator) @This() {
@@ -441,28 +427,10 @@ pub const Context = struct {
     pub fn update(self: *@This(), state: ApplicationState) void {
         self.last_state = self.active_state;
         self.active_state = state;
-        self.local_toggle = if (!self.last_state.hotkey_local and self.active_state.hotkey_local and self.active_state.hotkey_ctrl) !self.local_toggle else self.local_toggle;
+        // self.local_toggle = if (!self.last_state.hotkey_local and self.active_state.hotkey_local and self.active_state.hotkey_ctrl) !self.local_toggle else self.local_toggle;
         self.has_clicked = !self.last_state.mouse_left and self.active_state.mouse_left;
         self.has_released = self.last_state.mouse_left and !self.active_state.mouse_left;
         self.drawlist.clearRetainingCapacity();
-    }
-
-    pub fn transform(self: *@This(), name: []const u8, t: *rowmath.Transform) !void {
-        if (self.active_state.hotkey_ctrl) {
-            if (!self.last_state.hotkey_translate and self.active_state.hotkey_translate) {
-                self.mode = .Translate;
-            } else if (!self.last_state.hotkey_rotate and self.active_state.hotkey_rotate) {
-                self.mode = .Rotate;
-            } else if (!self.last_state.hotkey_scale and self.active_state.hotkey_scale) {
-                self.mode = .Scale;
-            }
-        }
-
-        switch (self.mode) {
-            .Translate => try self.translation_gizmo(name, t),
-            .Rotate => self.rotation_gizmo(name, t),
-            .Scale => self.scale_gizmo(name, t),
-        }
     }
 
     // This will calculate a scale constant based on the number of screenspace pixels passed as pixel_scale.
@@ -475,15 +443,14 @@ pub const Context = struct {
         if (self.gizmos.getPtr(id)) |gizmo| {
             return gizmo;
         } else {
-            self.gizmos.put(id, .{}) catch |e| {
-                std.debug.print("get_or_add => {}\n", .{e});
+            self.gizmos.put(id, .{}) catch {
                 @panic("get_or_add");
             };
             return self.gizmos.getPtr(id).?;
         }
     }
 
-    fn translation_gizmo(
+    pub fn translation(
         self: *@This(),
         name: []const u8,
         _p: *rowmath.Transform,
@@ -559,7 +526,6 @@ pub const Context = struct {
                         .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
                     };
                     g.active = active;
-                    std.debug.print("{}\n", .{active});
                 }
             }
 
