@@ -108,6 +108,14 @@ const InteractionMode = enum {
     Scale_xyz,
 };
 
+fn flush_to_zero(f: Vec3) Vec3 {
+    return .{
+        .x = if (@abs(f.x) < 0.02) 0 else f.x,
+        .y = if (@abs(f.y) < 0.02) 0 else f.y,
+        .z = if (@abs(f.z) < 0.02) 0 else f.z,
+    };
+}
+
 const Drag = struct {
     mode: InteractionMode = .None,
     // Offset from position of grabbed object to coordinates of clicked point
@@ -164,6 +172,46 @@ const Drag = struct {
             }
         }
 
+        return null;
+    }
+
+    fn axis_scale_dragger(
+        self: @This(),
+        mouse_left: bool,
+        snap_scale: f32,
+        ray: Ray,
+        axis: Vec3,
+        center: Vec3,
+        scale: Vec3,
+        uniform: bool,
+    ) ?Vec3 {
+        if (mouse_left) {
+            const plane_tangent = axis.cross(center.sub(ray.origin));
+            const plane_normal = axis.cross(plane_tangent);
+
+            // Define the plane to contain the original position of the object
+            const plane_point = center;
+            // If an intersection exists between the ray and the plane, place the object at that point
+            const denom = ray.direction.dot(plane_normal);
+            if (@abs(denom) == 0) return null;
+
+            const t = plane_point.sub(ray.origin).dot(plane_normal) / denom;
+            if (t < 0) return null;
+
+            const distance = ray.point(t);
+
+            var offset_on_axis = (distance.sub(self.click_offset)).mul_each(axis);
+            offset_on_axis = flush_to_zero(offset_on_axis);
+            var new_scale = self.original_scale.mul_each(offset_on_axis);
+
+            new_scale = if (uniform) Vec3.scalar(std.math.clamp(distance.dot(new_scale), 0.01, 1000.0)) else Vec3{
+                .x = std.math.clamp(new_scale.x, 0.01, 1000.0),
+                .y = std.math.clamp(new_scale.y, 0.01, 1000.0),
+                .z = std.math.clamp(new_scale.z, 0.01, 1000.0),
+            };
+            if (snap_scale > 0) return snap(new_scale, snap_scale);
+            return scale;
+        }
         return null;
     }
 };
@@ -930,7 +978,7 @@ pub const Context = struct {
         _p.* = p;
     }
 
-    pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform) !void {
+    pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform, uniform: bool) !void {
         const p = Transform.trs(
             _p.rigid_transform.translation,
             _p.rigid_transform.rotation,
@@ -939,11 +987,7 @@ pub const Context = struct {
         const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
-        _ = g;
 
-        // if (g.has_clicked) g.gizmos[id].interaction_mode = interact::none;
-        //
-        // {
         var updated_state: InteractionMode = .None;
         var local_ray = detransform(p, self.active_state.ray);
         local_ray.descale(draw_scale);
@@ -968,35 +1012,66 @@ pub const Context = struct {
             }
         }
 
-        //     if (g.has_clicked)
-        //     {
-        //         g.gizmos[id].interaction_mode = updated_state;
-        //         if (g.gizmos[id].interaction_mode != interact::none)
-        //         {
-        //             transform(draw_scale, ray);
-        //             g.gizmos[id].original_scale = scale;
-        //             g.gizmos[id].click_offset = p.transform_point(ray.origin + ray.direction*t);
-        //             g.gizmos[id].active = true;
-        //         }
-        //         else g.gizmos[id].active = false;
-        //     }
-        // }
-        //
-        // if (g.has_released)
-        // {
-        //     g.gizmos[id].interaction_mode = interact::none;
-        //     g.gizmos[id].active = false;
-        // }
-        //
-        // if (g.gizmos[id].active)
-        // {
-        //     switch (g.gizmos[id].interaction_mode)
-        //     {
-        //     case interact::scale_x: axis_scale_dragger(id, g, { 1,0,0 }, center, scale, g.active_state.hotkey_ctrl); break;
-        //     case interact::scale_y: axis_scale_dragger(id, g, { 0,1,0 }, center, scale, g.active_state.hotkey_ctrl); break;
-        //     case interact::scale_z: axis_scale_dragger(id, g, { 0,0,1 }, center, scale, g.active_state.hotkey_ctrl); break;
-        //     }
-        // }
+        if (self.has_clicked) {
+            g.active = null;
+            if (updated_state != .None) {
+                local_ray.scale(draw_scale);
+                g.active = .{
+                    .mode = updated_state,
+                    .original_scale = _p.scale,
+                    .click_offset = p.transform_point(local_ray.point(best_t)),
+                };
+            }
+        }
+
+        if (self.has_released) {
+            g.active = null;
+        }
+
+        if (g.active) |active| {
+            switch (active.mode) {
+                .Scale_x => {
+                    if (active.axis_scale_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_scale,
+                        self.active_state.ray,
+                        RIGHT,
+                        _p.rigid_transform.translation,
+                        _p.scale,
+                        uniform,
+                    )) |new_scale| {
+                        _p.scale = new_scale;
+                    }
+                },
+                .Scale_y => {
+                    if (active.axis_scale_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_scale,
+                        self.active_state.ray,
+                        UP,
+                        _p.rigid_transform.translation,
+                        _p.scale,
+                        uniform,
+                    )) |new_scale| {
+                        _p.scale = new_scale;
+                    }
+                },
+                .Scale_z => {
+                    if (active.axis_scale_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_scale,
+                        self.active_state.ray,
+                        FORWARD,
+                        _p.rigid_transform.translation,
+                        _p.scale,
+                        uniform,
+                    )) |new_scale| {
+                        _p.scale = new_scale;
+                    }
+                },
+                else => unreachable,
+            }
+        }
 
         const scaleMatrix = Mat4.scale_uniform(draw_scale);
         const modelMatrix = p.matrix().mul(scaleMatrix);
@@ -1010,5 +1085,7 @@ pub const Context = struct {
                 });
             }
         }
+
+        // _p.* = p;
     }
 };
