@@ -1,12 +1,12 @@
 const std = @import("std");
-const rowmath = @import("rowmath.zig");
+const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
 const Vec4 = rowmath.Vec4;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
+const Ray = rowmath.Ray;
 const Transform = rowmath.Transform;
-const Ray = @import("camera.zig").Ray;
 const TAU = 6.28318530718;
 
 fn snap(value: Vec3, f: f32) ?Vec3 {
@@ -131,7 +131,7 @@ const Drag = struct {
         self: @This(),
         mouse_left: bool,
         snap_rotation: f32,
-        ray: Ray,
+        r: Ray,
         axis: Vec3,
         start_orientation: Quat,
     ) ?Quat {
@@ -146,7 +146,6 @@ const Drag = struct {
             .z = the_axis.z,
             .w = -the_axis.dot(self.click_offset),
         };
-        const r = ray;
 
         if (intersect_ray_plane(r, the_plane)) |t| {
             const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.click_offset.sub(self.original_position))));

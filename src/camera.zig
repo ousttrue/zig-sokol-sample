@@ -1,10 +1,11 @@
 const std = @import("std");
-const rowmath = @import("rowmath.zig");
+const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 const RigidTransform = rowmath.RigidTransform;
+const Ray = rowmath.Ray;
 const InputState = @import("input_state.zig").InputState;
 
 pub const RenderTarget = enum {
@@ -21,33 +22,6 @@ pub const Frustum = struct {
     far_top_right: Vec3,
     far_bottom_left: Vec3,
     far_bottom_right: Vec3,
-};
-
-pub const Ray = struct {
-    origin: Vec3,
-    direction: Vec3,
-
-    pub fn point(self: @This(), t: f32) Vec3 {
-        return self.origin.add(self.direction.scale(t));
-    }
-
-    pub fn scale(self: *@This(), f: f32) void {
-        self.origin = self.origin.scale(f);
-        self.direction = self.direction.scale(f);
-    }
-
-    pub fn descale(self: *@This(), f: f32) void {
-        self.origin = .{
-            .x = self.origin.x / f,
-            .y = self.origin.y / f,
-            .z = self.origin.z / f,
-        };
-        self.direction = .{
-            .x = self.direction.x / f,
-            .y = self.direction.y / f,
-            .z = self.direction.z / f,
-        };
-    }
 };
 
 pub const Camera = struct {

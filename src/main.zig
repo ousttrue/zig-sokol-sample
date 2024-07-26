@@ -7,13 +7,13 @@ const simgui = sokol.imgui;
 // const scene = @import("cube_scene.zig");
 const scene = @import("teapot_scene.zig");
 const InputState = @import("input_state.zig").InputState;
-const Camera = @import("camera.zig").Camera;
 const RenderTarget = @import("rendertarget.zig").RenderTarget;
 const linegeom = @import("linegeom.zig");
-const tinygizmo = @import("tinygizmo.zig");
-const rowmath = @import("rowmath.zig");
+const tinygizmo = @import("tinygizmo");
+const rowmath = @import("rowmath");
 const Vec3 = rowmath.Vec3;
 const Vec2 = rowmath.Vec2;
+const Camera = @import("camera.zig").Camera;
 
 fn draw_line(v0: Vec3, v1: Vec3) void {
     sokol.gl.v3f(v0.x, v0.y, v0.z);

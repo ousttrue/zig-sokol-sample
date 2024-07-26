@@ -33,6 +33,19 @@ pub fn build(b: *std.Build) void {
     compile.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     b.installArtifact(compile);
 
+    // rowmath
+    const rowmath = b.createModule(.{
+        .root_source_file = b.path("src/rowmath/rowmath.zig"),
+    });
+    compile.root_module.addImport("rowmath", rowmath);
+
+    // tinygizmo
+    const tinygizmo = b.createModule(.{
+        .root_source_file = b.path("src/tinygizmo/tinygizmo.zig"),
+    });
+    tinygizmo.addImport("rowmath", rowmath);
+    compile.root_module.addImport("tinygizmo", tinygizmo);
+
     if (target.result.isWasm()) {
         // create a build step which invokes the Emscripten linker
         const emsdk = dep_sokol.builder.dependency("emsdk", .{});
