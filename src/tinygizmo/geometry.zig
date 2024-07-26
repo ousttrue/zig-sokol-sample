@@ -184,7 +184,7 @@ const Triangle = struct {
     }
 };
 
-const GeometryMesh = struct {
+pub const GeometryMesh = struct {
     vertices: []const GeometryVertex,
     triangles: []const [3]u16,
 

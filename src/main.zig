@@ -297,9 +297,9 @@ export fn frame() void {
                 color.z,
                 color.w,
             );
-            for (m.mesh.mesh.triangles) |triangle| {
+            for (m.mesh.triangles) |triangle| {
                 for (triangle) |i| {
-                    const p = m.mesh.mesh.vertices[i].position;
+                    const p = m.mesh.vertices[i].position;
                     sokol.gl.v3f(p.x, p.y, p.z);
                 }
             }

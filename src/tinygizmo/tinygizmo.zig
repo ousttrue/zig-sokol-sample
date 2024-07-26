@@ -49,54 +49,54 @@ const translate_xyz = geometry.MeshComponent.init(
     ),
     BASE_GRAY,
 );
-fn translation_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
-    var updated_state: InteractionMode = .None;
+fn translation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
+    var component: ?InteractionMode = null;
     var best_t = std.math.inf(f32);
 
     if (translate_x.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_x;
+            component = .Translate_x;
             best_t = t;
         }
     }
     if (translate_y.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_y;
+            component = .Translate_y;
             best_t = t;
         }
     }
     if (translate_z.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_z;
+            component = .Translate_z;
             best_t = t;
         }
     }
     if (translate_yz.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_yz;
+            component = .Translate_yz;
             best_t = t;
         }
     }
     if (translate_zx.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_zx;
+            component = .Translate_zx;
             best_t = t;
         }
     }
     if (translate_xy.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_xy;
+            component = .Translate_xy;
             best_t = t;
         }
     }
     if (translate_xyz.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Translate_xyz;
+            component = .Translate_xyz;
             best_t = t;
         }
     }
 
-    return .{ updated_state, best_t };
+    return .{ component, best_t };
 }
 
 const rotate_x = geometry.MeshComponent.init(
@@ -111,29 +111,29 @@ const rotate_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
     BASE_BLUE,
 );
-fn rotation_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
-    var updated_state: InteractionMode = .None;
+fn rotation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
+    var component: ?InteractionMode = null;
     var best_t = std.math.inf(f32);
 
     if (rotate_x.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Rotate_x;
+            component = .Rotate_x;
             best_t = t;
         }
     }
     if (rotate_y.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Rotate_y;
+            component = .Rotate_y;
             best_t = t;
         }
     }
     if (rotate_z.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Rotate_z;
+            component = .Rotate_z;
             best_t = t;
         }
     }
-    return .{ updated_state, best_t };
+    return .{ component, best_t };
 }
 
 const scale_x = geometry.MeshComponent.init(
@@ -148,33 +148,32 @@ const scale_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
     BASE_BLUE,
 );
-fn scale_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
-    var updated_state: InteractionMode = .None;
+fn scale_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
+    var component: ?InteractionMode = null;
     var best_t = std.math.inf(f32);
     if (scale_x.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Scale_x;
+            component = .Scale_x;
             best_t = t;
         }
     }
     if (scale_y.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Scale_y;
+            component = .Scale_y;
             best_t = t;
         }
     }
     if (scale_z.mesh.intersect(local_ray)) |t| {
         if (t < best_t) {
-            updated_state = .Scale_z;
+            component = .Scale_z;
             best_t = t;
         }
     }
-    return .{ updated_state, best_t };
+    return .{ component, best_t };
 }
 
 fn get(i: InteractionMode) ?geometry.MeshComponent {
     return switch (i) {
-        .None => null,
         .Translate_x => translate_x,
         .Translate_y => translate_y,
         .Translate_z => translate_z,
@@ -250,7 +249,8 @@ pub const ApplicationState = struct {
 };
 
 const Renderable = struct {
-    mesh: geometry.MeshComponent,
+    mesh: geometry.GeometryMesh,
+    base_color: Vec4,
     matrix: Mat4,
     hover: bool,
     active: bool,
@@ -258,13 +258,13 @@ const Renderable = struct {
     pub fn color(self: @This()) Vec4 {
         if (self.hover) {
             return .{
-                .x = std.math.lerp(self.mesh.base_color.x, 1, 0.5),
-                .y = std.math.lerp(self.mesh.base_color.y, 1, 0.5),
-                .z = std.math.lerp(self.mesh.base_color.z, 1, 0.5),
-                .w = std.math.lerp(self.mesh.base_color.w, 1, 0.5),
+                .x = std.math.lerp(self.base_color.x, 1, 0.5),
+                .y = std.math.lerp(self.base_color.y, 1, 0.5),
+                .z = std.math.lerp(self.base_color.z, 1, 0.5),
+                .w = std.math.lerp(self.base_color.w, 1, 0.5),
             };
         } else {
-            return self.mesh.base_color;
+            return self.base_color;
         }
     }
 };
@@ -289,7 +289,6 @@ fn detransform(p: Transform, r: Ray) Ray {
 }
 
 const InteractionMode = enum {
-    None,
     Translate_x,
     Translate_y,
     Translate_z,
@@ -315,7 +314,7 @@ fn flush_to_zero(f: Vec3) Vec3 {
 }
 
 const Drag = struct {
-    mode: InteractionMode = .None,
+    component: InteractionMode,
     // Offset from position of grabbed object to coordinates of clicked point
     click_offset: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     // Original position of an object being manipulated with a gizmo
@@ -414,7 +413,7 @@ const Drag = struct {
 
 const Interaction = struct {
     // Flag to indicate if the gizmo is being hovered
-    hover: InteractionMode = .None,
+    hover: ?InteractionMode = null,
     // Currently active component
     active: ?Drag = null,
 };
@@ -541,7 +540,7 @@ pub const Context = struct {
             Vec3.one,
         );
         const local_ray, const draw_scale = self.active_state.local_ray(p);
-        const updated_state, const best_t = translation_intersect(
+        const _component, const best_t = translation_intersect(
             local_ray.descale(draw_scale),
         );
 
@@ -549,10 +548,10 @@ pub const Context = struct {
         var g = self.get_or_add(id);
         if (self.has_clicked) {
             g.active = null;
-            if (updated_state != .None) {
+            if (_component) |component| {
                 const point = local_ray.point(best_t);
                 const active = Drag{
-                    .mode = updated_state,
+                    .component = component,
                     .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
                 };
                 g.active = active;
@@ -572,7 +571,7 @@ pub const Context = struct {
         if (g.active) |*active| {
             if (self.active_state.mouse_left) {
                 var position = p.rigid_transform.translation.add(active.click_offset);
-                if (switch (active.mode) {
+                if (switch (active.component) {
                     .Translate_x => self.axis_translation_dragger(active, axes[0], position),
                     .Translate_y => self.axis_translation_dragger(active, axes[1], position),
                     .Translate_z => self.axis_translation_dragger(active, axes[2], position),
@@ -616,9 +615,10 @@ pub const Context = struct {
         for (draw_interactions) |i| {
             if (get(i)) |c| {
                 try self.drawlist.append(.{
-                    .mesh = c,
+                    .mesh = c.mesh,
+                    .base_color = c.base_color,
                     .matrix = modelMatrix,
-                    .hover = i == updated_state,
+                    .hover = i == _component,
                     .active = false,
                 });
             }
@@ -678,14 +678,14 @@ pub const Context = struct {
         const local_ray, const draw_scale = self.active_state.local_ray(p);
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
-        const updated_state, const best_t = rotation_intersect(
+        const _component, const best_t = rotation_intersect(
             local_ray.descale(draw_scale),
         );
         if (self.has_clicked) {
             g.active = null;
-            if (updated_state != .None) {
+            if (_component) |component| {
                 g.active = .{
-                    .mode = updated_state,
+                    .component = component,
                     .original_position = _p.rigid_transform.translation,
                     .original_orientation = _p.rigid_transform.rotation,
                     .click_offset = local_ray.point(best_t),
@@ -696,7 +696,7 @@ pub const Context = struct {
         var activeAxis: Vec3 = undefined;
         if (g.active) |*active| {
             const starting_orientation = if (self.local_toggle) active.original_orientation else Quat.identity;
-            switch (active.mode) {
+            switch (active.component) {
                 .Rotate_x => {
                     if (active.axis_rotation_dragger(
                         self.active_state.mouse_left,
@@ -754,9 +754,10 @@ pub const Context = struct {
             for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
                 if (get(i)) |c| {
                     try self.drawlist.append(.{
-                        .mesh = c,
+                        .mesh = c.mesh,
+                        .base_color = c.base_color,
                         .matrix = modelMatrix,
-                        .hover = i == updated_state,
+                        .hover = i == _component,
                         .active = false,
                     });
                 }
@@ -805,15 +806,15 @@ pub const Context = struct {
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
 
-        const updated_state, const best_t = scale_intersect(
+        const _component, const best_t = scale_intersect(
             local_ray.descale(draw_scale),
         );
 
         if (self.has_clicked) {
             g.active = null;
-            if (updated_state != .None) {
+            if (_component) |component| {
                 g.active = .{
-                    .mode = updated_state,
+                    .component = component,
                     .original_scale = _p.scale,
                     .click_offset = p.transform_point(local_ray.point(best_t)),
                 };
@@ -825,7 +826,7 @@ pub const Context = struct {
         }
 
         if (g.active) |active| {
-            switch (active.mode) {
+            switch (active.component) {
                 .Scale_x => {
                     if (active.axis_scale_dragger(
                         self.active_state.mouse_left,
@@ -871,9 +872,10 @@ pub const Context = struct {
         for ([_]InteractionMode{ .Scale_x, .Scale_y, .Scale_z }) |i| {
             if (get(i)) |c| {
                 try self.drawlist.append(.{
-                    .mesh = c,
+                    .mesh = c.mesh,
+                    .base_color = c.base_color,
                     .matrix = modelMatrix,
-                    .hover = i == updated_state,
+                    .hover = i == _component,
                     .active = false,
                 });
             }
