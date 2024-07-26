@@ -181,38 +181,37 @@ const Drag = struct {
         snap_scale: f32,
         ray: Ray,
         axis: Vec3,
-        center: Vec3,
-        scale: Vec3,
+        // Define the plane to contain the original position of the object
+        plane_point: Vec3,
         uniform: bool,
     ) ?Vec3 {
-        if (mouse_left) {
-            const plane_tangent = axis.cross(center.sub(ray.origin));
-            const plane_normal = axis.cross(plane_tangent);
-
-            // Define the plane to contain the original position of the object
-            const plane_point = center;
-            // If an intersection exists between the ray and the plane, place the object at that point
-            const denom = ray.direction.dot(plane_normal);
-            if (@abs(denom) == 0) return null;
-
-            const t = plane_point.sub(ray.origin).dot(plane_normal) / denom;
-            if (t < 0) return null;
-
-            const distance = ray.point(t);
-
-            var offset_on_axis = (distance.sub(self.click_offset)).mul_each(axis);
-            offset_on_axis = flush_to_zero(offset_on_axis);
-            var new_scale = self.original_scale.mul_each(offset_on_axis);
-
-            new_scale = if (uniform) Vec3.scalar(std.math.clamp(distance.dot(new_scale), 0.01, 1000.0)) else Vec3{
-                .x = std.math.clamp(new_scale.x, 0.01, 1000.0),
-                .y = std.math.clamp(new_scale.y, 0.01, 1000.0),
-                .z = std.math.clamp(new_scale.z, 0.01, 1000.0),
-            };
-            if (snap_scale > 0) return snap(new_scale, snap_scale);
-            return scale;
+        if (!mouse_left) {
+            return null;
         }
-        return null;
+
+        const plane_tangent = axis.cross(plane_point.sub(ray.origin));
+        const plane_normal = axis.cross(plane_tangent);
+
+        // If an intersection exists between the ray and the plane, place the object at that point
+        const denom = ray.direction.dot(plane_normal);
+        if (@abs(denom) == 0) return null;
+
+        const t = plane_point.sub(ray.origin).dot(plane_normal) / denom;
+        if (t < 0) return null;
+
+        const distance = ray.point(t);
+
+        var offset_on_axis = (distance.sub(self.click_offset)).mul_each(axis);
+        offset_on_axis = flush_to_zero(offset_on_axis);
+        var new_scale = self.original_scale.add(offset_on_axis);
+
+        new_scale = if (uniform) Vec3.scalar(std.math.clamp(distance.dot(new_scale), 0.01, 1000.0)) else Vec3{
+            .x = std.math.clamp(new_scale.x, 0.01, 1000.0),
+            .y = std.math.clamp(new_scale.y, 0.01, 1000.0),
+            .z = std.math.clamp(new_scale.z, 0.01, 1000.0),
+        };
+        if (snap_scale > 0) return snap(new_scale, snap_scale);
+        return new_scale;
     }
 };
 
@@ -979,7 +978,7 @@ pub const Context = struct {
     }
 
     pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform, uniform: bool) !void {
-        const p = Transform.trs(
+        var p = Transform.trs(
             _p.rigid_transform.translation,
             _p.rigid_transform.rotation,
             Vec3.one,
@@ -1037,7 +1036,6 @@ pub const Context = struct {
                         self.active_state.ray,
                         RIGHT,
                         _p.rigid_transform.translation,
-                        _p.scale,
                         uniform,
                     )) |new_scale| {
                         _p.scale = new_scale;
@@ -1050,7 +1048,6 @@ pub const Context = struct {
                         self.active_state.ray,
                         UP,
                         _p.rigid_transform.translation,
-                        _p.scale,
                         uniform,
                     )) |new_scale| {
                         _p.scale = new_scale;
@@ -1063,7 +1060,6 @@ pub const Context = struct {
                         self.active_state.ray,
                         FORWARD,
                         _p.rigid_transform.translation,
-                        _p.scale,
                         uniform,
                     )) |new_scale| {
                         _p.scale = new_scale;
