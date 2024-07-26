@@ -11,44 +11,65 @@ const geometry = @import("geometry.zig");
 const context = @import("context.zig");
 
 const translate_x = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.RIGHT, context.UP, context.FORWARD, 16, &context.ARROW_POINTS, 0),
-    context.BASE_RED,
+    geometry.make_lathed_geometry(
+        Vec3.RIGHT,
+        Vec3.UP,
+        Vec3.FORWARD,
+        16,
+        &context.ARROW_POINTS,
+        0,
+    ),
+    Vec4.RED,
 );
 const translate_y = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.UP, context.FORWARD, context.RIGHT, 16, &context.ARROW_POINTS, 0),
-    context.BASE_GREEN,
+    geometry.make_lathed_geometry(
+        Vec3.UP,
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        16,
+        &context.ARROW_POINTS,
+        0,
+    ),
+    Vec4.GREEN,
 );
 const translate_z = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.FORWARD, context.RIGHT, context.UP, 16, &context.ARROW_POINTS, 0),
-    context.BASE_BLUE,
+    geometry.make_lathed_geometry(
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        Vec3.UP,
+        16,
+        &context.ARROW_POINTS,
+        0,
+    ),
+    Vec4.BLUE,
 );
 const translate_yz = geometry.MeshComponent.init(
     geometry.make_box_geometry(
         .{ .x = -0.01, .y = 0.25, .z = 0.25 },
         .{ .x = 0.01, .y = 0.75, .z = 0.75 },
     ),
-    context.BASE_CYAN,
+    Vec4.CYAN,
 );
 const translate_zx = geometry.MeshComponent.init(
     geometry.make_box_geometry(
         .{ .x = 0.25, .y = -0.01, .z = 0.25 },
         .{ .x = 0.75, .y = 0.01, .z = 0.75 },
     ),
-    context.BASE_MAGENTA,
+    Vec4.MAGENTA,
 );
 const translate_xy = geometry.MeshComponent.init(
     geometry.make_box_geometry(
         .{ .x = 0.25, .y = 0.25, .z = -0.01 },
         .{ .x = 0.75, .y = 0.75, .z = 0.01 },
     ),
-    context.BASE_YELLOW,
+    Vec4.YELLOW,
 );
 const translate_xyz = geometry.MeshComponent.init(
     geometry.make_box_geometry(
         .{ .x = -0.05, .y = -0.05, .z = -0.05 },
         .{ .x = 0.05, .y = 0.05, .z = 0.05 },
     ),
-    context.BASE_GRAY,
+    Vec4.GRAY,
 );
 fn translation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
     var component: ?InteractionMode = null;
@@ -224,7 +245,7 @@ pub const TranslationContext = struct {
         var p = Transform.trs(
             _p.rigid_transform.translation,
             if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
-            Vec3.one,
+            Vec3.ONE,
         );
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);
         const _component, const best_t = translation_intersect(

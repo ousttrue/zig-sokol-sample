@@ -34,8 +34,11 @@ pub const Vec3 = extern struct {
     y: f32,
     z: f32,
 
-    pub const one = Vec3{ .x = 1, .y = 1, .z = 1 };
-    pub const zero = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
+    pub const ONE = Vec3{ .x = 1, .y = 1, .z = 1 };
+    pub const ZERO = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
+    pub const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
+    pub const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
+    pub const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
 
     pub fn scalar(f: f32) Vec3 {
         return .{
@@ -82,7 +85,7 @@ pub const Vec3 = extern struct {
         if (l != 0.0) {
             return Vec3{ .x = v.x / l, .y = v.y / l, .z = v.z / l };
         } else {
-            return Vec3.zero;
+            return Vec3.ZERO;
         }
     }
 
@@ -108,6 +111,14 @@ pub const Vec4 = extern struct {
     y: f32,
     z: f32,
     w: f32,
+
+    pub const RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
+    pub const GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
+    pub const BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
+    pub const CYAN: Vec4 = .{ .x = 0, .y = 0.5, .z = 0.5, .w = 1.0 };
+    pub const MAGENTA: Vec4 = .{ .x = 0.5, .y = 0, .z = 0.5, .w = 1.0 };
+    pub const YELLOW: Vec4 = .{ .x = 0.3, .y = 0.3, .z = 0, .w = 1.0 };
+    pub const GRAY: Vec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
 
     pub fn fromVec3(v: Vec3, w: f32) @This() {
         return .{
@@ -527,7 +538,7 @@ pub const Quat = struct {
 
 pub const RigidTransform = struct {
     rotation: Quat = Quat.identity,
-    translation: Vec3 = Vec3.zero,
+    translation: Vec3 = Vec3.ZERO,
 
     pub fn localToWorld(self: @This()) Mat4 {
         const r = self.rotation.matrix();

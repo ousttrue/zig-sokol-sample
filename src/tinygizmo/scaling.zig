@@ -8,145 +8,40 @@ const Mat4 = rowmath.Mat4;
 const Ray = rowmath.Ray;
 const Transform = rowmath.Transform;
 const geometry = @import("geometry.zig");
-
-const translate_x = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 16, &ARROW_POINTS, 0),
-    BASE_RED,
-);
-const translate_y = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 16, &ARROW_POINTS, 0),
-    BASE_GREEN,
-);
-const translate_z = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &ARROW_POINTS, 0),
-    BASE_BLUE,
-);
-const translate_yz = geometry.MeshComponent.init(
-    geometry.make_box_geometry(
-        .{ .x = -0.01, .y = 0.25, .z = 0.25 },
-        .{ .x = 0.01, .y = 0.75, .z = 0.75 },
-    ),
-    BASE_CYAN,
-);
-const translate_zx = geometry.MeshComponent.init(
-    geometry.make_box_geometry(
-        .{ .x = 0.25, .y = -0.01, .z = 0.25 },
-        .{ .x = 0.75, .y = 0.01, .z = 0.75 },
-    ),
-    BASE_MAGENTA,
-);
-const translate_xy = geometry.MeshComponent.init(
-    geometry.make_box_geometry(
-        .{ .x = 0.25, .y = 0.25, .z = -0.01 },
-        .{ .x = 0.75, .y = 0.75, .z = 0.01 },
-    ),
-    BASE_YELLOW,
-);
-const translate_xyz = geometry.MeshComponent.init(
-    geometry.make_box_geometry(
-        .{ .x = -0.05, .y = -0.05, .z = -0.05 },
-        .{ .x = 0.05, .y = 0.05, .z = 0.05 },
-    ),
-    BASE_GRAY,
-);
-fn translation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
-    var component: ?InteractionMode = null;
-    var best_t = std.math.inf(f32);
-
-    if (translate_x.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_x;
-            best_t = t;
-        }
-    }
-    if (translate_y.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_y;
-            best_t = t;
-        }
-    }
-    if (translate_z.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_z;
-            best_t = t;
-        }
-    }
-    if (translate_yz.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_yz;
-            best_t = t;
-        }
-    }
-    if (translate_zx.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_zx;
-            best_t = t;
-        }
-    }
-    if (translate_xy.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_xy;
-            best_t = t;
-        }
-    }
-    if (translate_xyz.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Translate_xyz;
-            best_t = t;
-        }
-    }
-
-    return .{ component, best_t };
-}
-
-const rotate_x = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 32, &RING_POINTS, 0.003),
-    BASE_RED,
-);
-const rotate_y = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 32, &RING_POINTS, -0.003),
-    BASE_GREEN,
-);
-const rotate_z = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
-    BASE_BLUE,
-);
-fn rotation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
-    var component: ?InteractionMode = null;
-    var best_t = std.math.inf(f32);
-
-    if (rotate_x.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Rotate_x;
-            best_t = t;
-        }
-    }
-    if (rotate_y.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Rotate_y;
-            best_t = t;
-        }
-    }
-    if (rotate_z.mesh.intersect(local_ray)) |t| {
-        if (t < best_t) {
-            component = .Rotate_z;
-            best_t = t;
-        }
-    }
-    return .{ component, best_t };
-}
+const context = @import("context.zig");
 
 const scale_x = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 16, &MACE_POINTS, 0),
-    BASE_RED,
+    geometry.make_lathed_geometry(
+        Vec3.RIGHT,
+        Vec3.UP,
+        Vec3.FORWARD,
+        16,
+        &context.MACE_POINTS,
+        0,
+    ),
+    Vec4.RED,
 );
 const scale_y = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 16, &MACE_POINTS, 0),
-    BASE_GREEN,
+    geometry.make_lathed_geometry(
+        Vec3.UP,
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        16,
+        &context.MACE_POINTS,
+        0,
+    ),
+    Vec4.GREEN,
 );
 const scale_z = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
-    BASE_BLUE,
+    geometry.make_lathed_geometry(
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        Vec3.UP,
+        16,
+        &context.MACE_POINTS,
+        0,
+    ),
+    Vec4.BLUE,
 );
 fn scale_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
     var component: ?InteractionMode = null;
@@ -174,16 +69,6 @@ fn scale_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
 
 fn get(i: InteractionMode) ?geometry.MeshComponent {
     return switch (i) {
-        .Translate_x => translate_x,
-        .Translate_y => translate_y,
-        .Translate_z => translate_z,
-        .Translate_yz => translate_yz,
-        .Translate_zx => translate_zx,
-        .Translate_xy => translate_xy,
-        .Translate_xyz => translate_xyz,
-        .Rotate_x => rotate_x,
-        .Rotate_y => rotate_y,
-        .Rotate_z => rotate_z,
         .Scale_x => scale_x,
         .Scale_y => scale_y,
         .Scale_z => scale_z,
@@ -202,103 +87,7 @@ fn snap(value: Vec3, f: f32) ?Vec3 {
     return null;
 }
 
-pub const ApplicationState = struct {
-    // 3d viewport used to render the view
-    viewport_size: Vec2,
-    // Used for constructing inverse view projection for raycasting onto gizmo geometry
-    cam_dir: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    cam_yFov: f32 = 0,
-    // world-space ray (from camera position to mouse cursor)
-    ray: Ray = .{
-        .origin = .{ .x = 0, .y = 0, .z = 0 },
-        .direction = .{ .x = 0, .y = 0, .z = 0 },
-    },
-    // mouse
-    mouse_left: bool = false,
-    // If > 0.f, the gizmos are drawn scale-invariant with a screenspace value defined here
-    screenspace_scale: f32 = 0,
-    // World-scale units used for snapping translation
-    snap_translation: f32 = 0,
-    // World-scale units used for snapping scale
-    snap_scale: f32 = 0,
-    // Radians used for snapping rotation quaternions (i.e. PI/8 or PI/16)
-    snap_rotation: f32 = 0,
-
-    fn scale_screenspace(self: @This(), position: rowmath.Vec3, pixel_scale: f32) f32 {
-        const dist = position.sub(self.ray.origin).len();
-        return std.math.tan(self.cam_yFov) * dist * (pixel_scale / self.viewport_size.y);
-    }
-
-    fn draw_scale(self: @This(), p: Transform) f32 {
-        if (self.screenspace_scale > 0.0) {
-            return self.scale_screenspace(
-                p.rigid_transform.translation,
-                self.screenspace_scale,
-            );
-        } else {
-            return 1.0;
-        }
-    }
-
-    fn local_ray(self: @This(), p: Transform) struct { Ray, f32 } {
-        return .{
-            detransform(p, self.ray),
-            self.draw_scale(p),
-        };
-    }
-};
-
-const Renderable = struct {
-    mesh: geometry.GeometryMesh,
-    base_color: Vec4,
-    matrix: Mat4,
-    hover: bool,
-    active: bool,
-
-    pub fn color(self: @This()) Vec4 {
-        if (self.hover) {
-            return .{
-                .x = std.math.lerp(self.base_color.x, 1, 0.5),
-                .y = std.math.lerp(self.base_color.y, 1, 0.5),
-                .z = std.math.lerp(self.base_color.z, 1, 0.5),
-                .w = std.math.lerp(self.base_color.w, 1, 0.5),
-            };
-        } else {
-            return self.base_color;
-        }
-    }
-};
-
-// 32 bit Fowler–Noll–Vo Hash
-const fnv1aBase32: u32 = 0x811C9DC5;
-const fnv1aPrime32: u32 = 0x01000193;
-fn hash_fnv1a(str: []const u8) u32 {
-    var result = fnv1aBase32;
-    for (str) |ch| {
-        result ^= @as(u32, ch);
-        result *%= fnv1aPrime32;
-    }
-    return result;
-}
-
-fn detransform(p: Transform, r: Ray) Ray {
-    return .{
-        .origin = p.detransform_point(r.origin),
-        .direction = p.detransform_vector(r.direction),
-    };
-}
-
 const InteractionMode = enum {
-    Translate_x,
-    Translate_y,
-    Translate_z,
-    Translate_yz,
-    Translate_zx,
-    Translate_xy,
-    Translate_xyz,
-    Rotate_x,
-    Rotate_y,
-    Rotate_z,
     Scale_x,
     Scale_y,
     Scale_z,
@@ -316,60 +105,9 @@ fn flush_to_zero(f: Vec3) Vec3 {
 const Drag = struct {
     component: InteractionMode,
     // Offset from position of grabbed object to coordinates of clicked point
-    click_offset: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // Original position of an object being manipulated with a gizmo
-    original_position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    // Original orientation of an object being manipulated with a gizmo
-    original_orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
+    click_offset: Vec3,
     // Original scale of an object being manipulated with a gizmo
-    original_scale: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-
-    fn axis_rotation_dragger(
-        self: @This(),
-        mouse_left: bool,
-        snap_rotation: f32,
-        r: Ray,
-        axis: Vec3,
-        start_orientation: Quat,
-    ) ?Quat {
-        if (!mouse_left) {
-            return null;
-        }
-        const original_pose = Transform.trs(self.original_position, start_orientation, Vec3.one);
-        const the_axis = original_pose.transform_vector(axis);
-        const the_plane = Vec4{
-            .x = the_axis.x,
-            .y = the_axis.y,
-            .z = the_axis.z,
-            .w = -the_axis.dot(self.click_offset),
-        };
-
-        if (intersect_ray_plane(r, the_plane)) |t| {
-            const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.click_offset.sub(self.original_position))));
-            const arm1 = self.click_offset.sub(center_of_rotation).norm();
-            const arm2 = r.point(t).sub(center_of_rotation).norm();
-
-            const d = arm1.dot(arm2);
-            if (d > 0.999) {
-                return null;
-            }
-
-            const angle = std.math.acos(d);
-            if (angle < 0.001) {
-                return null;
-            }
-
-            if (snap_rotation > 0) {
-                const snapped = make_rotation_quat_between_vectors_snapped(arm1, arm2, snap_rotation);
-                return snapped.mul(start_orientation);
-            } else {
-                const a = arm1.cross(arm2).norm();
-                return Quat.axisAngle(a, angle).mul(start_orientation);
-            }
-        }
-
-        return null;
-    }
+    original_scale: Vec3,
 
     fn axis_scale_dragger(
         self: @This(),
@@ -411,390 +149,30 @@ const Drag = struct {
     }
 };
 
-const ARROW_POINTS = [_]Vec2{
-    .{ .x = 0.25, .y = 0 },
-    .{ .x = 0.25, .y = 0.05 },
-    .{ .x = 1, .y = 0.05 },
-    .{ .x = 1, .y = 0.10 },
-    .{ .x = 1.2, .y = 0 },
-};
-const MACE_POINTS = [_]Vec2{
-    .{ .x = 0.25, .y = 0 },
-    .{ .x = 0.25, .y = 0.05 },
-    .{ .x = 1, .y = 0.05 },
-    .{ .x = 1, .y = 0.1 },
-    .{ .x = 1.25, .y = 0.1 },
-    .{ .x = 1.25, .y = 0 },
-};
-const RING_POINTS = [_]Vec2{
-    .{ .x = 0.025, .y = 1 },
-    .{ .x = -0.025, .y = 1 },
-    .{ .x = -0.025, .y = 1 },
-    .{ .x = -0.025, .y = 1.1 },
-    .{ .x = -0.025, .y = 1.1 },
-    .{ .x = 0.025, .y = 1.1 },
-    .{ .x = 0.025, .y = 1.1 },
-    .{ .x = 0.025, .y = 1 },
-};
-
-const BASE_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
-const BASE_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
-const BASE_BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
-const BASE_CYAN: Vec4 = .{ .x = 0, .y = 0.5, .z = 0.5, .w = 1.0 };
-const BASE_MAGENTA: Vec4 = .{ .x = 0.5, .y = 0, .z = 0.5, .w = 1.0 };
-const BASE_YELLOW: Vec4 = .{ .x = 0.3, .y = 0.3, .z = 0, .w = 1.0 };
-const BASE_GRAY: Vec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
-
-const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
-const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
-const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
-
-fn intersect_ray_plane(ray: Ray, plane: Vec4) ?f32 {
-    const denom = (Vec3{ .x = plane.x, .y = plane.y, .z = plane.z }).dot(ray.direction);
-    if (@abs(denom) == 0) return null;
-    return -plane.dot(Vec4.fromVec3(ray.origin, 1)) / denom;
-}
-
-fn make_rotation_quat_between_vectors_snapped(
-    from: Vec3,
-    to: Vec3,
-    angle: f32,
-) Quat {
-    const a = from.norm();
-    const b = to.norm();
-    const snappedAcos = std.math.floor(std.math.acos(a.dot(b)) / angle) * angle;
-    return make_rotation_quat_axis_angle(a.cross(b).norm(), snappedAcos);
-}
-
-fn make_rotation_quat_axis_angle(axis: Vec3, angle: f32) Quat {
-    const s = std.math.sin(angle / 2);
-    const c = std.math.cos(angle / 2);
-    return .{
-        .x = axis.x * s,
-        .y = axis.y * s,
-        .z = axis.z * s,
-        .w = c,
-    };
-}
-
-pub const Context = struct {
+pub const ScalingContext = struct {
     // Flag to indicate if the gizmo is being hovered
     hover: ?InteractionMode = null,
     // Currently active component
     active: ?Drag = null,
 
-    active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
-    last_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
-    // State to describe if the user has pressed the left mouse button during the last frame
-    has_clicked: bool = false,
-    // State to describe if the user has released the left mouse button during the last frame
-    has_released: bool = false,
-    drawlist: std.ArrayList(Renderable),
-
-    pub fn init(allocator: std.mem.Allocator) @This() {
-        return .{
-            .drawlist = std.ArrayList(Renderable).init(allocator),
-        };
-    }
-
-    pub fn deinit(self: *@This()) void {
-        self.drawlist.deinit();
-    }
-
-    pub fn update(self: *@This(), state: ApplicationState) void {
-        self.last_state = self.active_state;
-        self.active_state = state;
-        // self.local_toggle = if (!self.last_state.hotkey_local and self.active_state.hotkey_local and self.active_state.hotkey_ctrl) !self.local_toggle else self.local_toggle;
-        self.has_clicked = !self.last_state.mouse_left and self.active_state.mouse_left;
-        self.has_released = self.last_state.mouse_left and !self.active_state.mouse_left;
-        self.drawlist.clearRetainingCapacity();
-    }
-
-    pub fn translation(
+    pub fn scale(
         self: *@This(),
-        local_toggle: bool,
-        _p: *Transform,
+        ctx: context.Context,
+        drawlist: *std.ArrayList(context.Renderable),
+        _p: *rowmath.Transform,
+        uniform: bool,
     ) !void {
-        var p = Transform.trs(
-            _p.rigid_transform.translation,
-            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
-            Vec3.one,
-        );
-        const local_ray, const draw_scale = self.active_state.local_ray(p);
-        const _component, const best_t = translation_intersect(
-            local_ray.descale(draw_scale),
-        );
-
-        if (self.has_clicked) {
-            self.active = null;
-            if (_component) |component| {
-                const point = local_ray.point(best_t);
-                const active = Drag{
-                    .component = component,
-                    .click_offset = if (local_toggle) p.transform_vector(point) else point,
-                };
-                self.active = active;
-            }
-        }
-
-        const axes = if (local_toggle) [3]Vec3{
-            p.rigid_transform.rotation.dirX(),
-            p.rigid_transform.rotation.dirY(),
-            p.rigid_transform.rotation.dirZ(),
-        } else [3]Vec3{
-            .{ .x = 1, .y = 0, .z = 0 },
-            .{ .x = 0, .y = 1, .z = 0 },
-            .{ .x = 0, .y = 0, .z = 1 },
-        };
-
-        if (self.active) |*active| {
-            if (self.active_state.mouse_left) {
-                var position = p.rigid_transform.translation.add(active.click_offset);
-                if (switch (active.component) {
-                    .Translate_x => self.axis_translation_dragger(active, axes[0], position),
-                    .Translate_y => self.axis_translation_dragger(active, axes[1], position),
-                    .Translate_z => self.axis_translation_dragger(active, axes[2], position),
-                    .Translate_yz => self.plane_translation_dragger(active, axes[0], position),
-                    .Translate_zx => self.plane_translation_dragger(active, axes[1], position),
-                    .Translate_xy => self.plane_translation_dragger(active, axes[2], position),
-                    .Translate_xyz => self.plane_translation_dragger(
-                        active,
-                        self.active_state.cam_dir, //.orientation.dirZ().negate(),
-                        position,
-                    ),
-                    else => @panic("switch"),
-                }) |new_position| {
-                    position = new_position;
-                }
-                p.rigid_transform.translation = position.sub(active.click_offset);
-            }
-        }
-
-        if (self.has_released) {
-            self.active = null;
-        }
-
-        const draw_interactions = [_]InteractionMode{
-            .Translate_x,
-            .Translate_y,
-            .Translate_z,
-            .Translate_yz,
-            .Translate_zx,
-            .Translate_xy,
-            .Translate_xyz,
-        };
-
-        const scaleMatrix = Mat4.scale(.{
-            .x = draw_scale,
-            .y = draw_scale,
-            .z = draw_scale,
-        });
-        const modelMatrix = p.matrix().mul(scaleMatrix);
-
-        for (draw_interactions) |i| {
-            if (get(i)) |c| {
-                try self.drawlist.append(.{
-                    .mesh = c.mesh,
-                    .base_color = c.base_color,
-                    .matrix = modelMatrix,
-                    .hover = i == _component,
-                    .active = false,
-                });
-            }
-        }
-
-        _p.* = p;
-    }
-
-    fn plane_translation_dragger(self: @This(), active: *Drag, plane_normal: Vec3, point: Vec3) ?Vec3 {
-        // Mouse clicked
-        if (self.has_clicked) {
-            active.original_position = point;
-        }
-
-        // Define the plane to contain the original position of the object
-        const plane_point = active.original_position;
-
-        // If an intersection exists between the ray and the plane, place the object at that point
-        const denom = self.active_state.ray.direction.dot(plane_normal);
-        if (@abs(denom) == 0) {
-            return null;
-        }
-
-        const t = plane_point.sub(self.active_state.ray.origin).dot(plane_normal) / denom;
-        if (t < 0) {
-            return null;
-        }
-
-        var result = self.active_state.ray.point(t);
-        if (snap(result, self.active_state.snap_translation)) |new_position| {
-            result = new_position;
-        }
-        return result;
-    }
-
-    fn axis_translation_dragger(
-        self: @This(),
-        active: *Drag,
-        axis: Vec3,
-        point: Vec3,
-    ) ?Vec3 {
-        // First apply a plane translation dragger with a plane that contains the desired axis and is oriented to face the camera
-        const plane_tangent = axis.cross(point.sub(self.active_state.ray.origin));
-        const plane_normal = axis.cross(plane_tangent);
-        const new_point = self.plane_translation_dragger(active, plane_normal, point) orelse {
-            return null;
-        };
-        // Constrain object motion to be along the desired axis
-        const delta = new_point.sub(active.original_position);
-        return active.original_position.add(axis.scale(delta.dot(axis)));
-    }
-
-    pub fn rotation(
-        self: *@This(),
-        local_toggle: bool,
-        _p: *Transform,
-    ) !void {
-        std.debug.assert(_p.rigid_transform.rotation.length2() > 1e-6);
-
-        var p = Transform.trs(
-            _p.rigid_transform.translation,
-            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
-            Vec3.one,
-        );
-        // Orientation is local by default
-        const local_ray, const draw_scale = self.active_state.local_ray(p);
-        const _component, const best_t = rotation_intersect(
-            local_ray.descale(draw_scale),
-        );
-        if (self.has_clicked) {
-            self.active = null;
-            if (_component) |component| {
-                self.active = .{
-                    .component = component,
-                    .original_position = _p.rigid_transform.translation,
-                    .original_orientation = _p.rigid_transform.rotation,
-                    .click_offset = local_ray.point(best_t),
-                };
-            }
-        }
-
-        var activeAxis: Vec3 = undefined;
-        if (self.active) |*active| {
-            const starting_orientation = if (local_toggle) active.original_orientation else Quat.identity;
-            switch (active.component) {
-                .Rotate_x => {
-                    if (active.axis_rotation_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_rotation,
-                        self.active_state.ray,
-                        RIGHT,
-                        starting_orientation,
-                    )) |rot| {
-                        p.rigid_transform.rotation = rot;
-                    }
-                    activeAxis = RIGHT;
-                },
-                .Rotate_y => {
-                    if (active.axis_rotation_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_rotation,
-                        self.active_state.ray,
-                        UP,
-                        starting_orientation,
-                    )) |rot| {
-                        p.rigid_transform.rotation = rot;
-                    }
-                    activeAxis = UP;
-                },
-                .Rotate_z => {
-                    if (active.axis_rotation_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_rotation,
-                        self.active_state.ray,
-                        FORWARD,
-                        starting_orientation,
-                    )) |rot| {
-                        p.rigid_transform.rotation = rot;
-                    }
-                    activeAxis = FORWARD;
-                },
-                else => unreachable,
-            }
-        }
-
-        if (self.has_released) {
-            self.active = null;
-        }
-
-        const scaleMatrix = Mat4.scale(.{
-            .x = draw_scale,
-            .y = draw_scale,
-            .z = draw_scale,
-        });
-        const modelMatrix = p.matrix().mul(scaleMatrix);
-
-        if (!local_toggle and self.active != null) {
-            // draw_interactions = { g.interaction_mode };
-        } else {
-            for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
-                if (get(i)) |c| {
-                    try self.drawlist.append(.{
-                        .mesh = c.mesh,
-                        .base_color = c.base_color,
-                        .matrix = modelMatrix,
-                        .hover = i == _component,
-                        .active = false,
-                    });
-                }
-            }
-        }
-
-        // For non-local transformations, we only present one rotation ring
-        // and draw an arrow from the center of the gizmo to indicate the degree of rotation
-        // if (g.local_toggle == false && g.gizmos[id].interaction_mode != interact::none)
-        // {
-        //     interaction_state & interaction = g.gizmos[id];
-        //
-        //     // Create orthonormal basis for drawing the arrow
-        //     float3 a = qrot(p.orientation, interaction.click_offset - interaction.original_position);
-        //     float3 zDir = normalize(activeAxis), xDir = normalize(cross(a, zDir)), yDir = cross(zDir, xDir);
-        //
-        //     // Ad-hoc geometry
-        //     std::initializer_list<float2> arrow_points = { { 0.0f, 0.f },{ 0.0f, 0.05f },{ 0.8f, 0.05f },{ 0.9f, 0.10f },{ 1.0f, 0 } };
-        //     auto geo = make_lathed_geometry(yDir, xDir, zDir, 32, arrow_points);
-        //
-        //     gizmo_renderable r;
-        //     r.mesh = geo;
-        //     r.color = float4(1);
-        //     for (auto & v : r.mesh.vertices)
-        //     {
-        //         v.position = transform_coord(modelMatrix, v.position);
-        //         v.normal = transform_vector(modelMatrix, v.normal);
-        //     }
-        //     g.drawlist.push_back(r);
-        //
-        //     orientation = qmul(p.orientation, interaction.original_orientation);
-        // }
-        // else if (g.local_toggle == true && g.gizmos[id].interaction_mode != interact::none) orientation = p.orientation;
-        //
-
-        _p.* = p;
-    }
-
-    pub fn scale(self: *@This(), _p: *rowmath.Transform, uniform: bool) !void {
         var p = Transform.trs(
             _p.rigid_transform.translation,
             _p.rigid_transform.rotation,
-            Vec3.one,
+            Vec3.ONE,
         );
-        const local_ray, const draw_scale = self.active_state.local_ray(p);
-
+        const local_ray, const draw_scale = ctx.active_state.local_ray(p);
         const _component, const best_t = scale_intersect(
             local_ray.descale(draw_scale),
         );
 
-        if (self.has_clicked) {
+        if (ctx.has_clicked) {
             self.active = null;
             if (_component) |component| {
                 self.active = .{
@@ -805,7 +183,7 @@ pub const Context = struct {
             }
         }
 
-        if (self.has_released) {
+        if (ctx.has_released) {
             self.active = null;
         }
 
@@ -813,10 +191,10 @@ pub const Context = struct {
             switch (active.component) {
                 .Scale_x => {
                     if (active.axis_scale_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_scale,
-                        self.active_state.ray,
-                        RIGHT,
+                        ctx.active_state.mouse_left,
+                        ctx.active_state.snap_scale,
+                        ctx.active_state.ray,
+                        Vec3.RIGHT,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -825,10 +203,10 @@ pub const Context = struct {
                 },
                 .Scale_y => {
                     if (active.axis_scale_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_scale,
-                        self.active_state.ray,
-                        UP,
+                        ctx.active_state.mouse_left,
+                        ctx.active_state.snap_scale,
+                        ctx.active_state.ray,
+                        Vec3.UP,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -837,10 +215,10 @@ pub const Context = struct {
                 },
                 .Scale_z => {
                     if (active.axis_scale_dragger(
-                        self.active_state.mouse_left,
-                        self.active_state.snap_scale,
-                        self.active_state.ray,
-                        FORWARD,
+                        ctx.active_state.mouse_left,
+                        ctx.active_state.snap_scale,
+                        ctx.active_state.ray,
+                        Vec3.FORWARD,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -855,7 +233,7 @@ pub const Context = struct {
         const modelMatrix = p.matrix().mul(scaleMatrix);
         for ([_]InteractionMode{ .Scale_x, .Scale_y, .Scale_z }) |i| {
             if (get(i)) |c| {
-                try self.drawlist.append(.{
+                try drawlist.append(.{
                     .mesh = c.mesh,
                     .base_color = c.base_color,
                     .matrix = modelMatrix,

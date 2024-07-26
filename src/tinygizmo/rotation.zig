@@ -11,16 +11,37 @@ const geometry = @import("geometry.zig");
 const context = @import("context.zig");
 
 const rotate_x = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.RIGHT, context.UP, context.FORWARD, 32, &context.RING_POINTS, 0.003),
-    context.BASE_RED,
+    geometry.make_lathed_geometry(
+        Vec3.RIGHT,
+        Vec3.UP,
+        Vec3.FORWARD,
+        32,
+        &context.RING_POINTS,
+        0.003,
+    ),
+    Vec4.RED,
 );
 const rotate_y = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.UP, context.FORWARD, context.RIGHT, 32, &context.RING_POINTS, -0.003),
-    context.BASE_GREEN,
+    geometry.make_lathed_geometry(
+        Vec3.UP,
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        32,
+        &context.RING_POINTS,
+        -0.003,
+    ),
+    Vec4.GREEN,
 );
 const rotate_z = geometry.MeshComponent.init(
-    geometry.make_lathed_geometry(context.FORWARD, context.RIGHT, context.UP, 32, &context.RING_POINTS, 0),
-    context.BASE_BLUE,
+    geometry.make_lathed_geometry(
+        Vec3.FORWARD,
+        Vec3.RIGHT,
+        Vec3.UP,
+        32,
+        &context.RING_POINTS,
+        0,
+    ),
+    Vec4.BLUE,
 );
 fn rotation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
     var component: ?InteractionMode = null;
@@ -165,7 +186,11 @@ const Drag = struct {
         if (!mouse_left) {
             return null;
         }
-        const original_pose = Transform.trs(self.original_position, start_orientation, Vec3.one);
+        const original_pose = Transform.trs(
+            self.original_position,
+            start_orientation,
+            Vec3.ONE,
+        );
         const the_axis = original_pose.transform_vector(axis);
         const the_plane = Vec4{
             .x = the_axis.x,
@@ -248,7 +273,7 @@ pub const RotationContext = struct {
         var p = Transform.trs(
             _p.rigid_transform.translation,
             if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
-            Vec3.one,
+            Vec3.ONE,
         );
         // Orientation is local by default
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);
@@ -276,36 +301,36 @@ pub const RotationContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        context.RIGHT,
+                        Vec3.RIGHT,
                         starting_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = context.RIGHT;
+                    activeAxis = Vec3.RIGHT;
                 },
                 .Rotate_y => {
                     if (active.axis_rotation_dragger(
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        context.UP,
+                        Vec3.UP,
                         starting_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = context.UP;
+                    activeAxis = Vec3.UP;
                 },
                 .Rotate_z => {
                     if (active.axis_rotation_dragger(
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        context.FORWARD,
+                        Vec3.FORWARD,
                         starting_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = context.FORWARD;
+                    activeAxis = Vec3.FORWARD;
                 },
             }
         }

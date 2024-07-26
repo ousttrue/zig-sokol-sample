@@ -15,6 +15,36 @@ const Vec3 = rowmath.Vec3;
 const Vec2 = rowmath.Vec2;
 const Camera = @import("camera.zig").Camera;
 
+const state = struct {
+    var allocator: std.mem.Allocator = undefined;
+    var display = RenderView{
+        .camera = .{
+            .near_clip = 0.5,
+            .far_clip = 15,
+            .transform = .{
+                .translation = .{
+                    .x = 0,
+                    .y = 1,
+                    .z = 5,
+                },
+            },
+        },
+    };
+    var offscreen = RenderView{
+        .camera = .{
+            .transform = .{
+                .translation = .{ .x = 0, .y = 1, .z = 15 },
+            },
+        },
+    };
+    var rendertarget: ?RenderTarget = null;
+    var gizmo_ctx: tinygizmo.Context = .{};
+    var gizmo_a: tinygizmo.TranslationContext = .{};
+    var gizmo_b: tinygizmo.RotationContext = .{};
+    var gizmo_c: tinygizmo.ScalingContext = .{};
+    var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
+};
+
 fn draw_line(v0: Vec3, v1: Vec3) void {
     sokol.gl.v3f(v0.x, v0.y, v0.z);
     sokol.gl.v3f(v1.x, v1.y, v1.z);
@@ -45,14 +75,14 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     draw_line(frustom.near_bottom_right, frustom.near_bottom_left);
     draw_line(frustom.near_bottom_left, frustom.near_top_left);
 
-    draw_line(Vec3.zero, frustom.far_top_left);
-    draw_line(Vec3.zero, frustom.far_top_right);
-    draw_line(Vec3.zero, frustom.far_bottom_left);
-    draw_line(Vec3.zero, frustom.far_bottom_right);
+    draw_line(Vec3.ZERO, frustom.far_top_left);
+    draw_line(Vec3.ZERO, frustom.far_top_right);
+    draw_line(Vec3.ZERO, frustom.far_bottom_left);
+    draw_line(Vec3.ZERO, frustom.far_bottom_right);
 
     if (_cursor) |cursor| {
         sokol.gl.c3f(1, 1, 0);
-        draw_line(Vec3.zero, .{
+        draw_line(Vec3.ZERO, .{
             .x = frustom.far_top_right.x * cursor.x,
             .y = frustom.far_top_right.y * cursor.y,
             .z = frustom.far_top_right.z,
@@ -137,35 +167,6 @@ const RenderView = struct {
     }
 };
 
-const state = struct {
-    var allocator: std.mem.Allocator = undefined;
-    var display = RenderView{
-        .camera = .{
-            .near_clip = 0.5,
-            .far_clip = 15,
-            .transform = .{
-                .translation = .{
-                    .x = 0,
-                    .y = 1,
-                    .z = 5,
-                },
-            },
-        },
-    };
-    var offscreen = RenderView{
-        .camera = .{
-            .transform = .{
-                .translation = .{ .x = 0, .y = 1, .z = 15 },
-            },
-        },
-    };
-    var rendertarget: ?RenderTarget = null;
-    var gizmo_ctx: tinygizmo.Context = .{};
-    var gizmo_a: tinygizmo.TranslationContext = .{};
-    var gizmo_b: tinygizmo.RotationContext = .{};
-    var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
-};
-
 extern fn Custom_ButtonBehaviorMiddleRight() void;
 
 pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
@@ -238,8 +239,8 @@ export fn frame() void {
         state.drawlist.clearRetainingCapacity();
         state.gizmo_a.translation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_a) catch @panic("transform a");
         state.gizmo_b.rotation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_b) catch @panic("transform b");
-        // const uniform = false;
-        // state.gizmo_c.scale(&scene.state.xform_c, uniform) catch @panic("transform b");
+        const uniform = false;
+        state.gizmo_c.scale(state.gizmo_ctx, &state.drawlist, &scene.state.xform_c, uniform) catch @panic("transform b");
     }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image

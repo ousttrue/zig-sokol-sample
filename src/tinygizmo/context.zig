@@ -34,19 +34,6 @@ pub const RING_POINTS = [_]Vec2{
     .{ .x = 0.025, .y = 1 },
 };
 
-pub const BASE_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
-pub const BASE_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
-pub const BASE_BLUE: Vec4 = .{ .x = 0, .y = 0, .z = 1, .w = 1.0 };
-pub const BASE_CYAN: Vec4 = .{ .x = 0, .y = 0.5, .z = 0.5, .w = 1.0 };
-pub const BASE_MAGENTA: Vec4 = .{ .x = 0.5, .y = 0, .z = 0.5, .w = 1.0 };
-pub const BASE_YELLOW: Vec4 = .{ .x = 0.3, .y = 0.3, .z = 0, .w = 1.0 };
-pub const BASE_GRAY: Vec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
-
-pub const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
-pub const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
-pub const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
-
-
 fn detransform(p: Transform, r: Ray) Ray {
     return .{
         .origin = p.detransform_point(r.origin),
