@@ -49,6 +49,55 @@ const translate_xyz = geometry.MeshComponent.init(
     ),
     BASE_GRAY,
 );
+fn translation_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
+    var updated_state: InteractionMode = .None;
+    var best_t = std.math.inf(f32);
+
+    if (translate_x.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_x;
+            best_t = t;
+        }
+    }
+    if (translate_y.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_y;
+            best_t = t;
+        }
+    }
+    if (translate_z.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_z;
+            best_t = t;
+        }
+    }
+    if (translate_yz.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_yz;
+            best_t = t;
+        }
+    }
+    if (translate_zx.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_zx;
+            best_t = t;
+        }
+    }
+    if (translate_xy.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_xy;
+            best_t = t;
+        }
+    }
+    if (translate_xyz.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Translate_xyz;
+            best_t = t;
+        }
+    }
+
+    return .{ updated_state, best_t };
+}
 
 const rotate_x = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 32, &RING_POINTS, 0.003),
@@ -62,6 +111,30 @@ const rotate_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
     BASE_BLUE,
 );
+fn rotation_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
+    var updated_state: InteractionMode = .None;
+    var best_t = std.math.inf(f32);
+
+    if (rotate_x.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Rotate_x;
+            best_t = t;
+        }
+    }
+    if (rotate_y.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Rotate_y;
+            best_t = t;
+        }
+    }
+    if (rotate_z.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Rotate_z;
+            best_t = t;
+        }
+    }
+    return .{ updated_state, best_t };
+}
 
 const scale_x = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 16, &MACE_POINTS, 0),
@@ -75,6 +148,29 @@ const scale_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
     BASE_BLUE,
 );
+fn scale_intersect(local_ray: Ray) struct { InteractionMode, f32 } {
+    var updated_state: InteractionMode = .None;
+    var best_t = std.math.inf(f32);
+    if (scale_x.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Scale_x;
+            best_t = t;
+        }
+    }
+    if (scale_y.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Scale_y;
+            best_t = t;
+        }
+    }
+    if (scale_z.mesh.intersect(local_ray)) |t| {
+        if (t < best_t) {
+            updated_state = .Scale_z;
+            best_t = t;
+        }
+    }
+    return .{ updated_state, best_t };
+}
 
 fn get(i: InteractionMode) ?geometry.MeshComponent {
     return switch (i) {
@@ -444,61 +540,16 @@ pub const Context = struct {
             if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
         );
-        var local_ray, const draw_scale = self.active_state.local_ray(p);
-        local_ray.descale(draw_scale);
-
-        var updated_state: InteractionMode = .None;
-
-        var best_t = std.math.inf(f32);
-        if (translate_x.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_x;
-                best_t = t;
-            }
-        }
-        if (translate_y.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_y;
-                best_t = t;
-            }
-        }
-        if (translate_z.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_z;
-                best_t = t;
-            }
-        }
-        if (translate_yz.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_yz;
-                best_t = t;
-            }
-        }
-        if (translate_zx.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_zx;
-                best_t = t;
-            }
-        }
-        if (translate_xy.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_xy;
-                best_t = t;
-            }
-        }
-        if (translate_xyz.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Translate_xyz;
-                best_t = t;
-            }
-        }
+        const local_ray, const draw_scale = self.active_state.local_ray(p);
+        const updated_state, const best_t = translation_intersect(
+            local_ray.descale(draw_scale),
+        );
 
         const id = hash_fnv1a(name);
         var g = self.get_or_add(id);
         if (self.has_clicked) {
             g.active = null;
             if (updated_state != .None) {
-                local_ray.scale(draw_scale);
                 const point = local_ray.point(best_t);
                 const active = Drag{
                     .mode = updated_state,
@@ -624,39 +675,15 @@ pub const Context = struct {
             Vec3.one,
         );
         // Orientation is local by default
-        const draw_scale = self.active_state.draw_scale(p);
+        const local_ray, const draw_scale = self.active_state.local_ray(p);
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
-
-        var updated_state: InteractionMode = .None;
-
-        var local_ray = detransform(p, self.active_state.ray);
-        local_ray.descale(draw_scale);
-        var best_t = std.math.inf(f32);
-
-        if (rotate_x.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Rotate_x;
-                best_t = t;
-            }
-        }
-        if (rotate_y.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Rotate_y;
-                best_t = t;
-            }
-        }
-        if (rotate_z.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Rotate_z;
-                best_t = t;
-            }
-        }
-
+        const updated_state, const best_t = rotation_intersect(
+            local_ray.descale(draw_scale),
+        );
         if (self.has_clicked) {
             g.active = null;
             if (updated_state != .None) {
-                local_ray.scale(draw_scale);
                 g.active = .{
                     .mode = updated_state,
                     .original_position = _p.rigid_transform.translation,
@@ -774,38 +801,17 @@ pub const Context = struct {
             _p.rigid_transform.rotation,
             Vec3.one,
         );
-        const draw_scale = self.active_state.draw_scale(p);
+        const local_ray, const draw_scale = self.active_state.local_ray(p);
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
 
-        var updated_state: InteractionMode = .None;
-        var local_ray = detransform(p, self.active_state.ray);
-        local_ray.descale(draw_scale);
-
-        var best_t = std.math.inf(f32);
-        if (scale_x.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Scale_x;
-                best_t = t;
-            }
-        }
-        if (scale_y.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Scale_y;
-                best_t = t;
-            }
-        }
-        if (scale_z.mesh.intersect(local_ray)) |t| {
-            if (t < best_t) {
-                updated_state = .Scale_z;
-                best_t = t;
-            }
-        }
+        const updated_state, const best_t = scale_intersect(
+            local_ray.descale(draw_scale),
+        );
 
         if (self.has_clicked) {
             g.active = null;
             if (updated_state != .None) {
-                local_ray.scale(draw_scale);
                 g.active = .{
                     .mode = updated_state,
                     .original_scale = _p.scale,

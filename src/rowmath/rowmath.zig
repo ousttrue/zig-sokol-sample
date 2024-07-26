@@ -607,16 +607,18 @@ pub const Ray = struct {
         self.direction = self.direction.scale(f);
     }
 
-    pub fn descale(self: *@This(), f: f32) void {
-        self.origin = .{
-            .x = self.origin.x / f,
-            .y = self.origin.y / f,
-            .z = self.origin.z / f,
-        };
-        self.direction = .{
-            .x = self.direction.x / f,
-            .y = self.direction.y / f,
-            .z = self.direction.z / f,
+    pub fn descale(self: @This(), f: f32) Ray {
+        return .{
+            .origin = .{
+                .x = self.origin.x / f,
+                .y = self.origin.y / f,
+                .z = self.origin.z / f,
+            },
+            .direction = .{
+                .x = self.direction.x / f,
+                .y = self.direction.y / f,
+                .z = self.direction.z / f,
+            },
         };
     }
 };
