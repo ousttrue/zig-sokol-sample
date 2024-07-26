@@ -207,8 +207,8 @@ export fn frame() void {
             .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
         });
 
-        state.gizmo_ctx.rotation("first-example-gizmo", &scene.state.xform_a) catch @panic("transform a");
-        state.gizmo_ctx.translation("second-example-gizmo", &scene.state.xform_b) catch @panic("transform b");
+        state.gizmo_ctx.rotation("first-example-gizmo", false, &scene.state.xform_a) catch @panic("transform a");
+        state.gizmo_ctx.translation("second-example-gizmo", false, &scene.state.xform_b) catch @panic("transform b");
         const uniform = false;
         state.gizmo_ctx.scale("third-example-gizmo", &scene.state.xform_c, uniform) catch @panic("transform b");
     }

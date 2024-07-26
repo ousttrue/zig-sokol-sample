@@ -488,8 +488,6 @@ pub const Context = struct {
     gizmos: std.AutoHashMap(u32, Interaction),
     active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
     last_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
-    // State to describe if the gizmo should use transform-local math
-    local_toggle: bool = true,
     // State to describe if the user has pressed the left mouse button during the last frame
     has_clicked: bool = false,
     // State to describe if the user has released the left mouse button during the last frame
@@ -532,11 +530,12 @@ pub const Context = struct {
     pub fn translation(
         self: *@This(),
         name: []const u8,
+        local_toggle: bool,
         _p: *Transform,
     ) !void {
         var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
         );
         const local_ray, const draw_scale = self.active_state.local_ray(p);
@@ -552,13 +551,13 @@ pub const Context = struct {
                 const point = local_ray.point(best_t);
                 const active = Drag{
                     .component = component,
-                    .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
+                    .click_offset = if (local_toggle) p.transform_vector(point) else point,
                 };
                 g.active = active;
             }
         }
 
-        const axes = if (self.local_toggle) [3]Vec3{
+        const axes = if (local_toggle) [3]Vec3{
             p.rigid_transform.rotation.dirX(),
             p.rigid_transform.rotation.dirY(),
             p.rigid_transform.rotation.dirZ(),
@@ -654,7 +653,12 @@ pub const Context = struct {
         return result;
     }
 
-    fn axis_translation_dragger(self: @This(), active: *Drag, axis: Vec3, point: Vec3) ?Vec3 {
+    fn axis_translation_dragger(
+        self: @This(),
+        active: *Drag,
+        axis: Vec3,
+        point: Vec3,
+    ) ?Vec3 {
         // First apply a plane translation dragger with a plane that contains the desired axis and is oriented to face the camera
         const plane_tangent = axis.cross(point.sub(self.active_state.ray.origin));
         const plane_normal = axis.cross(plane_tangent);
@@ -666,12 +670,17 @@ pub const Context = struct {
         return active.original_position.add(axis.scale(delta.dot(axis)));
     }
 
-    pub fn rotation(self: *@This(), name: []const u8, _p: *Transform) !void {
+    pub fn rotation(
+        self: *@This(),
+        name: []const u8,
+        local_toggle: bool,
+        _p: *Transform,
+    ) !void {
         std.debug.assert(_p.rigid_transform.rotation.length2() > 1e-6);
 
         var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
         );
         // Orientation is local by default
@@ -695,7 +704,7 @@ pub const Context = struct {
 
         var activeAxis: Vec3 = undefined;
         if (g.active) |*active| {
-            const starting_orientation = if (self.local_toggle) active.original_orientation else Quat.identity;
+            const starting_orientation = if (local_toggle) active.original_orientation else Quat.identity;
             switch (active.component) {
                 .Rotate_x => {
                     if (active.axis_rotation_dragger(
@@ -748,7 +757,7 @@ pub const Context = struct {
         });
         const modelMatrix = p.matrix().mul(scaleMatrix);
 
-        if (!self.local_toggle and g.active != null) {
+        if (!local_toggle and g.active != null) {
             // draw_interactions = { g.interaction_mode };
         } else {
             for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
