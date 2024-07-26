@@ -49,8 +49,12 @@ pub const Vec3 = extern struct {
         return .{ .x = -self.x, .y = -self.y, .z = -self.z };
     }
 
+    pub fn len2(v: Vec3) f32 {
+        return Vec3.dot(v, v);
+    }
+
     pub fn len(v: Vec3) f32 {
-        return std.math.sqrt(Vec3.dot(v, v));
+        return std.math.sqrt(v.len2());
     }
 
     pub fn add(left: Vec3, right: Vec3) Vec3 {

@@ -221,9 +221,50 @@ fn make_lathed_geometry(
             }
         }
     }
-    // compute_normals(mesh);
+
+    compute_normals(&vertices, &triangles);
 
     return make_const_mesh(vertices, triangles);
+}
+
+fn compute_normals(vertices: []GeometryVertex, triangles: []const [3]u16) void {
+    const NORMAL_EPSILON = 0.0001;
+    @setEvalBranchQuota(100000);
+
+    var uniqueVertIndices = [1]u16{0} ** vertices.len;
+    for (0..vertices.len) |i| {
+        if (uniqueVertIndices[i] == 0) {
+            uniqueVertIndices[i] = i + 1;
+            const v0 = vertices[i].position;
+            for (i..vertices.len) |j| {
+                const v1 = vertices[j].position;
+                if (v1.sub(v0).len2() < NORMAL_EPSILON) {
+                    uniqueVertIndices[j] = uniqueVertIndices[i];
+                }
+            }
+        }
+    }
+
+    // uint32_t idx0, idx1, idx2;
+    for (triangles) |t| {
+        const idx0 = uniqueVertIndices[t[0]] - 1;
+        const idx1 = uniqueVertIndices[t[1]] - 1;
+        const idx2 = uniqueVertIndices[t[2]] - 1;
+        var v0 = vertices[idx0];
+        var v1 = vertices[idx1];
+        var v2 = vertices[idx2];
+        const n = v1.position.sub(v0.position).cross(v2.position.sub(v0.position));
+        v0.normal =v0.normal.add( n);
+        v1.normal =v1.normal.add( n);
+        v2.normal =v2.normal.add( n);
+    }
+
+    for (0..vertices.len) |i| {
+        vertices[i].normal = vertices[uniqueVertIndices[i] - 1].normal;
+    }
+    for (vertices) |*v| {
+        v.normal = v.normal.norm();
+    }
 }
 
 fn make_box_geometry(a: Vec3, b: Vec3) type {
