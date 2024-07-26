@@ -60,8 +60,8 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     }
 }
 
-fn draw_gizmo(gizmo_ctx: *const tinygizmo.Context) void {
-    for (gizmo_ctx.drawlist.items) |m| {
+fn draw_gizmo(drawlist: []const tinygizmo.Renderable) void {
+    for (drawlist) |m| {
         sokol.gl.matrixModeModelview();
         sokol.gl.pushMatrix();
         defer sokol.gl.popMatrix();
@@ -160,9 +160,10 @@ const state = struct {
         },
     };
     var rendertarget: ?RenderTarget = null;
-    var gizmo_a: tinygizmo.Context = undefined;
-    var gizmo_b: tinygizmo.Context = undefined;
-    var gizmo_c: tinygizmo.Context = undefined;
+    var gizmo_ctx: tinygizmo.Context = .{};
+    var gizmo_a: tinygizmo.TranslationContext = .{};
+    var gizmo_b: tinygizmo.RotationContext = .{};
+    var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
 };
 
 extern fn Custom_ButtonBehaviorMiddleRight() void;
@@ -184,9 +185,6 @@ export fn init() void {
     // state.allocator = std.heap.page_allocator;
     // wasm
     state.allocator = std.heap.c_allocator;
-    state.gizmo_a = tinygizmo.Context.init(state.allocator);
-    state.gizmo_b = tinygizmo.Context.init(state.allocator);
-    state.gizmo_c = tinygizmo.Context.init(state.allocator);
 
     // initialize sokol-gfx
     sg.setup(.{
@@ -212,6 +210,8 @@ export fn init() void {
         .depth_format = .DEPTH,
         .sample_count = 1,
     });
+
+    state.drawlist = std.ArrayList(tinygizmo.Renderable).init(state.allocator);
 }
 
 export fn frame() void {
@@ -227,21 +227,7 @@ export fn frame() void {
 
     const io = ig.igGetIO().*;
     if (!io.WantCaptureMouse) {
-        state.gizmo_a.update(.{
-            .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
-            .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
-            .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
-            .cam_yFov = state.display.camera.yFov,
-            .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
-        });
-        state.gizmo_b.update(.{
-            .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
-            .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
-            .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
-            .cam_yFov = state.display.camera.yFov,
-            .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
-        });
-        state.gizmo_c.update(.{
+        state.gizmo_ctx.update(.{
             .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
             .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
             .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
@@ -249,10 +235,11 @@ export fn frame() void {
             .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
         });
 
-        state.gizmo_a.translation(false, &scene.state.xform_a) catch @panic("transform a");
-        state.gizmo_b.rotation(false, &scene.state.xform_b) catch @panic("transform b");
-        const uniform = false;
-        state.gizmo_c.scale(&scene.state.xform_c, uniform) catch @panic("transform b");
+        state.drawlist.clearRetainingCapacity();
+        state.gizmo_a.translation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_a) catch @panic("transform a");
+        state.gizmo_b.rotation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_b) catch @panic("transform b");
+        // const uniform = false;
+        // state.gizmo_c.scale(&scene.state.xform_c, uniform) catch @panic("transform b");
     }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
@@ -325,9 +312,7 @@ export fn frame() void {
 
         scene.draw(state.display.camera, .Display);
         draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
-        draw_gizmo(&state.gizmo_a);
-        draw_gizmo(&state.gizmo_b);
-        draw_gizmo(&state.gizmo_c);
+        draw_gizmo(state.drawlist.items);
     }
     sg.commit();
 }

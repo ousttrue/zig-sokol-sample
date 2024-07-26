@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
 
     // tinygizmo
     const tinygizmo = b.createModule(.{
-        .root_source_file = b.path("src/tinygizmo/tinygizmo.zig"),
+        .root_source_file = b.path("src/tinygizmo/main.zig"),
     });
     tinygizmo.addImport("rowmath", rowmath);
     compile.root_module.addImport("tinygizmo", tinygizmo);
