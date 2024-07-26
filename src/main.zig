@@ -60,6 +60,30 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     }
 }
 
+fn draw_gizmo(gizmo_ctx: *const tinygizmo.Context) void {
+    for (gizmo_ctx.drawlist.items) |m| {
+        sokol.gl.matrixModeModelview();
+        sokol.gl.pushMatrix();
+        defer sokol.gl.popMatrix();
+        sokol.gl.multMatrix(&m.matrix.m[0]);
+        sokol.gl.beginTriangles();
+        defer sokol.gl.end();
+        const color = m.color();
+        sokol.gl.c4f(
+            color.x,
+            color.y,
+            color.z,
+            color.w,
+        );
+        for (m.mesh.triangles) |triangle| {
+            for (triangle) |i| {
+                const p = m.mesh.vertices[i].position;
+                sokol.gl.v3f(p.x, p.y, p.z);
+            }
+        }
+    }
+}
+
 const RenderView = struct {
     camera: Camera = Camera{},
     pip: sg.Pipeline = .{},
@@ -136,7 +160,9 @@ const state = struct {
         },
     };
     var rendertarget: ?RenderTarget = null;
-    var gizmo_ctx: tinygizmo.Context = undefined;
+    var gizmo_a: tinygizmo.Context = undefined;
+    var gizmo_b: tinygizmo.Context = undefined;
+    var gizmo_c: tinygizmo.Context = undefined;
 };
 
 extern fn Custom_ButtonBehaviorMiddleRight() void;
@@ -158,7 +184,9 @@ export fn init() void {
     // state.allocator = std.heap.page_allocator;
     // wasm
     state.allocator = std.heap.c_allocator;
-    state.gizmo_ctx = tinygizmo.Context.init(state.allocator);
+    state.gizmo_a = tinygizmo.Context.init(state.allocator);
+    state.gizmo_b = tinygizmo.Context.init(state.allocator);
+    state.gizmo_c = tinygizmo.Context.init(state.allocator);
 
     // initialize sokol-gfx
     sg.setup(.{
@@ -199,7 +227,21 @@ export fn frame() void {
 
     const io = ig.igGetIO().*;
     if (!io.WantCaptureMouse) {
-        state.gizmo_ctx.update(.{
+        state.gizmo_a.update(.{
+            .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
+            .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
+            .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
+            .cam_yFov = state.display.camera.yFov,
+            .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
+        });
+        state.gizmo_b.update(.{
+            .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
+            .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
+            .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
+            .cam_yFov = state.display.camera.yFov,
+            .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
+        });
+        state.gizmo_c.update(.{
             .viewport_size = .{ .x = io.DisplaySize.x, .y = io.DisplaySize.y },
             .mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left],
             .ray = state.display.camera.ray(.{ .x = io.MousePos.x, .y = io.MousePos.y }),
@@ -207,10 +249,10 @@ export fn frame() void {
             .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
         });
 
-        state.gizmo_ctx.rotation("first-example-gizmo", false, &scene.state.xform_a) catch @panic("transform a");
-        state.gizmo_ctx.translation("second-example-gizmo", false, &scene.state.xform_b) catch @panic("transform b");
+        state.gizmo_a.translation(false, &scene.state.xform_a) catch @panic("transform a");
+        state.gizmo_b.rotation(false, &scene.state.xform_b) catch @panic("transform b");
         const uniform = false;
-        state.gizmo_ctx.scale("third-example-gizmo", &scene.state.xform_c, uniform) catch @panic("transform b");
+        state.gizmo_c.scale(&scene.state.xform_c, uniform) catch @panic("transform b");
     }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
@@ -283,27 +325,9 @@ export fn frame() void {
 
         scene.draw(state.display.camera, .Display);
         draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
-        for (state.gizmo_ctx.drawlist.items) |m| {
-            sokol.gl.matrixModeModelview();
-            sokol.gl.pushMatrix();
-            defer sokol.gl.popMatrix();
-            sokol.gl.multMatrix(&m.matrix.m[0]);
-            sokol.gl.beginTriangles();
-            defer sokol.gl.end();
-            const color = m.color();
-            sokol.gl.c4f(
-                color.x,
-                color.y,
-                color.z,
-                color.w,
-            );
-            for (m.mesh.triangles) |triangle| {
-                for (triangle) |i| {
-                    const p = m.mesh.vertices[i].position;
-                    sokol.gl.v3f(p.x, p.y, p.z);
-                }
-            }
-        }
+        draw_gizmo(&state.gizmo_a);
+        draw_gizmo(&state.gizmo_b);
+        draw_gizmo(&state.gizmo_c);
     }
     sg.commit();
 }

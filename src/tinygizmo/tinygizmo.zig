@@ -411,13 +411,6 @@ const Drag = struct {
     }
 };
 
-const Interaction = struct {
-    // Flag to indicate if the gizmo is being hovered
-    hover: ?InteractionMode = null,
-    // Currently active component
-    active: ?Drag = null,
-};
-
 const ARROW_POINTS = [_]Vec2{
     .{ .x = 0.25, .y = 0 },
     .{ .x = 0.25, .y = 0.05 },
@@ -485,7 +478,11 @@ fn make_rotation_quat_axis_angle(axis: Vec3, angle: f32) Quat {
 }
 
 pub const Context = struct {
-    gizmos: std.AutoHashMap(u32, Interaction),
+    // Flag to indicate if the gizmo is being hovered
+    hover: ?InteractionMode = null,
+    // Currently active component
+    active: ?Drag = null,
+
     active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
     last_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
     // State to describe if the user has pressed the left mouse button during the last frame
@@ -496,13 +493,11 @@ pub const Context = struct {
 
     pub fn init(allocator: std.mem.Allocator) @This() {
         return .{
-            .gizmos = std.AutoHashMap(u32, Interaction).init(allocator),
             .drawlist = std.ArrayList(Renderable).init(allocator),
         };
     }
 
     pub fn deinit(self: *@This()) void {
-        self.gizmos.deinit();
         self.drawlist.deinit();
     }
 
@@ -515,21 +510,8 @@ pub const Context = struct {
         self.drawlist.clearRetainingCapacity();
     }
 
-    // This will calculate a scale constant based on the number of screenspace pixels passed as pixel_scale.
-    fn get_or_add(self: *@This(), id: u32) *Interaction {
-        if (self.gizmos.getPtr(id)) |gizmo| {
-            return gizmo;
-        } else {
-            self.gizmos.put(id, .{}) catch {
-                @panic("get_or_add");
-            };
-            return self.gizmos.getPtr(id).?;
-        }
-    }
-
     pub fn translation(
         self: *@This(),
-        name: []const u8,
         local_toggle: bool,
         _p: *Transform,
     ) !void {
@@ -543,17 +525,15 @@ pub const Context = struct {
             local_ray.descale(draw_scale),
         );
 
-        const id = hash_fnv1a(name);
-        var g = self.get_or_add(id);
         if (self.has_clicked) {
-            g.active = null;
+            self.active = null;
             if (_component) |component| {
                 const point = local_ray.point(best_t);
                 const active = Drag{
                     .component = component,
                     .click_offset = if (local_toggle) p.transform_vector(point) else point,
                 };
-                g.active = active;
+                self.active = active;
             }
         }
 
@@ -567,7 +547,7 @@ pub const Context = struct {
             .{ .x = 0, .y = 0, .z = 1 },
         };
 
-        if (g.active) |*active| {
+        if (self.active) |*active| {
             if (self.active_state.mouse_left) {
                 var position = p.rigid_transform.translation.add(active.click_offset);
                 if (switch (active.component) {
@@ -591,7 +571,7 @@ pub const Context = struct {
         }
 
         if (self.has_released) {
-            g.active = null;
+            self.active = null;
         }
 
         const draw_interactions = [_]InteractionMode{
@@ -672,7 +652,6 @@ pub const Context = struct {
 
     pub fn rotation(
         self: *@This(),
-        name: []const u8,
         local_toggle: bool,
         _p: *Transform,
     ) !void {
@@ -685,15 +664,13 @@ pub const Context = struct {
         );
         // Orientation is local by default
         const local_ray, const draw_scale = self.active_state.local_ray(p);
-        const id = hash_fnv1a(name);
-        const g = self.get_or_add(id);
         const _component, const best_t = rotation_intersect(
             local_ray.descale(draw_scale),
         );
         if (self.has_clicked) {
-            g.active = null;
+            self.active = null;
             if (_component) |component| {
-                g.active = .{
+                self.active = .{
                     .component = component,
                     .original_position = _p.rigid_transform.translation,
                     .original_orientation = _p.rigid_transform.rotation,
@@ -703,7 +680,7 @@ pub const Context = struct {
         }
 
         var activeAxis: Vec3 = undefined;
-        if (g.active) |*active| {
+        if (self.active) |*active| {
             const starting_orientation = if (local_toggle) active.original_orientation else Quat.identity;
             switch (active.component) {
                 .Rotate_x => {
@@ -747,7 +724,7 @@ pub const Context = struct {
         }
 
         if (self.has_released) {
-            g.active = null;
+            self.active = null;
         }
 
         const scaleMatrix = Mat4.scale(.{
@@ -757,7 +734,7 @@ pub const Context = struct {
         });
         const modelMatrix = p.matrix().mul(scaleMatrix);
 
-        if (!local_toggle and g.active != null) {
+        if (!local_toggle and self.active != null) {
             // draw_interactions = { g.interaction_mode };
         } else {
             for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
@@ -805,24 +782,22 @@ pub const Context = struct {
         _p.* = p;
     }
 
-    pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform, uniform: bool) !void {
+    pub fn scale(self: *@This(), _p: *rowmath.Transform, uniform: bool) !void {
         var p = Transform.trs(
             _p.rigid_transform.translation,
             _p.rigid_transform.rotation,
             Vec3.one,
         );
         const local_ray, const draw_scale = self.active_state.local_ray(p);
-        const id = hash_fnv1a(name);
-        const g = self.get_or_add(id);
 
         const _component, const best_t = scale_intersect(
             local_ray.descale(draw_scale),
         );
 
         if (self.has_clicked) {
-            g.active = null;
+            self.active = null;
             if (_component) |component| {
-                g.active = .{
+                self.active = .{
                     .component = component,
                     .original_scale = _p.scale,
                     .click_offset = p.transform_point(local_ray.point(best_t)),
@@ -831,10 +806,10 @@ pub const Context = struct {
         }
 
         if (self.has_released) {
-            g.active = null;
+            self.active = null;
         }
 
-        if (g.active) |active| {
+        if (self.active) |active| {
             switch (active.component) {
                 .Scale_x => {
                     if (active.axis_scale_dragger(
