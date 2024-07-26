@@ -5,8 +5,8 @@ const Vec3 = rowmath.Vec3;
 const Vec4 = rowmath.Vec4;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
+const Transform = rowmath.Transform;
 const Ray = @import("camera.zig").Ray;
-
 const TAU = 6.28318530718;
 
 fn snap(value: Vec3, f: f32) ?Vec3 {
@@ -83,7 +83,7 @@ fn hash_fnv1a(str: []const u8) u32 {
     return result;
 }
 
-fn detransform(p: rowmath.Transform, r: Ray) Ray {
+fn detransform(p: Transform, r: Ray) Ray {
     return .{
         .origin = p.detransform_point(r.origin),
         .direction = p.detransform_vector(r.direction),
@@ -196,6 +196,8 @@ fn make_lathed_geometry(
     var triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
     var v_index: usize = 0;
     var t_index: usize = 0;
+
+    @setEvalBranchQuota(2000);
     for (0..slices + 1) |i| {
         const angle = (@as(f32, @floatFromInt(i % slices)) * TAU / slices) + (TAU / 8.0);
         const c = std.math.cos(angle);
@@ -291,7 +293,16 @@ const ARROW_POINTS = [_]Vec2{
     .{ .x = 1.2, .y = 0 },
 };
 // std::vector<float2> mace_points             = { { 0.25f, 0 }, { 0.25f, 0.05f },{ 1, 0.05f },{ 1, 0.1f },{ 1.25f, 0.1f }, { 1.25f, 0 } };
-// std::vector<float2> ring_points             = { { +0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1 },{ -0.025f, 1.1f },{ -0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1.1f },{ +0.025f, 1 } };
+const RING_POINTS = [_]Vec2{
+    .{ .x = 0.025, .y = 1 },
+    .{ .x = -0.025, .y = 1 },
+    .{ .x = -0.025, .y = 1 },
+    .{ .x = -0.025, .y = 1.1 },
+    .{ .x = -0.025, .y = 1.1 },
+    .{ .x = 0.025, .y = 1.1 },
+    .{ .x = 0.025, .y = 1.1 },
+    .{ .x = 0.025, .y = 1 },
+};
 
 const BASE_RED: Vec4 = .{ .x = 1, .y = 0, .z = 0, .w = 1.0 };
 const BASE_GREEN: Vec4 = .{ .x = 0, .y = 1, .z = 0, .w = 1.0 };
@@ -359,6 +370,20 @@ const MeshComponent = struct {
         ),
         BASE_GRAY,
     );
+
+    const rotate_x = MeshComponent.init(
+        make_lathed_geometry(RIGHT, UP, FORWARD, 32, &RING_POINTS, 0.003),
+        BASE_RED,
+    );
+    const rotate_y = MeshComponent.init(
+        make_lathed_geometry(UP, FORWARD, RIGHT, 32, &RING_POINTS, -0.003),
+        BASE_GREEN,
+    );
+    const rotate_z = MeshComponent.init(
+        make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
+        BASE_BLUE,
+    );
+
     fn get(i: InteractionMode) ?MeshComponent {
         return switch (i) {
             .None => null,
@@ -369,18 +394,15 @@ const MeshComponent = struct {
             .Translate_zx => translate_zx,
             .Translate_xy => translate_xy,
             .Translate_xyz => translate_xyz,
-            .Rotate_x => null,
-            .Rotate_y => null,
-            .Rotate_z => null,
+            .Rotate_x => rotate_x,
+            .Rotate_y => rotate_y,
+            .Rotate_z => rotate_z,
             .Scale_x => null,
             .Scale_y => null,
             .Scale_z => null,
             .Scale_xyz => null,
         };
     }
-    // mesh_components[interact::rotate_x]         = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 32, ring_points, 0.003f), { 1, 0.5f, 0.5f, 1.f }, { 1, 0, 0, 1.f } };
-    // mesh_components[interact::rotate_y]         = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 32, ring_points, -0.003f), { 0.5f,1,0.5f, 1.f }, { 0,1,0, 1.f } };
-    // mesh_components[interact::rotate_z]         = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 32, ring_points), { 0.5f,0.5f,1, 1.f }, { 0,0,1, 1.f } };
     // mesh_components[interact::scale_x]          = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 16, mace_points),{ 1,0.5f,0.5f, 1.f },{ 1,0,0, 1.f } };
     // mesh_components[interact::scale_y]          = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 16, mace_points),{ 0.5f,1,0.5f, 1.f },{ 0,1,0, 1.f } };
     // mesh_components[interact::scale_z]          = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, mace_points),{ 0.5f,0.5f,1, 1.f },{ 0,0,1, 1.f } };
@@ -453,17 +475,15 @@ pub const Context = struct {
     pub fn translation(
         self: *@This(),
         name: []const u8,
-        _p: *rowmath.Transform,
+        _p: *Transform,
     ) !void {
-        var p = rowmath.Transform.trs(
+        var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (self.local_toggle) _p.rigid_transform.rotation else Quat.indentity,
+            if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
         );
         const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
         const id = hash_fnv1a(name);
-
-        // interaction_mode will only change on clicked
         var g = self.get_or_add(id);
 
         {
@@ -585,13 +605,12 @@ pub const Context = struct {
 
             for (draw_interactions) |i| {
                 if (MeshComponent.get(i)) |c| {
-                    const r = Renderable{
+                    try self.drawlist.append(.{
                         .mesh = c,
                         .matrix = modelMatrix,
                         .hover = i == updated_state,
                         .active = false,
-                    };
-                    try self.drawlist.append(r);
+                    });
                 }
             }
 
@@ -638,9 +657,121 @@ pub const Context = struct {
         return interaction.original_position.add(axis.scale(delta.dot(axis)));
     }
 
-    fn rotation_gizmo(_: @This(), name: []const u8, t: *rowmath.Transform) void {
-        _ = t; // autofix
-        _ = name; // autofix
+    pub fn rotation(self: *@This(), name: []const u8, _p: *Transform) !void {
+        std.debug.assert(_p.rigid_transform.rotation.length2() > 1e-6);
+
+        const p = Transform.trs(
+            _p.rigid_transform.translation,
+            if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            Vec3.one,
+        );
+        // Orientation is local by default
+        const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
+        const id = hash_fnv1a(name);
+        const g = self.get_or_add(id);
+
+        var updated_state: InteractionMode = .None;
+
+        var local_ray = detransform(p, self.active_state.ray);
+        local_ray.descale(draw_scale);
+        var best_t = std.math.inf(f32);
+
+        if (MeshComponent.rotate_x.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Rotate_x;
+                best_t = t;
+            }
+        }
+        if (MeshComponent.rotate_y.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Rotate_y;
+                best_t = t;
+            }
+        }
+        if (MeshComponent.rotate_z.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Rotate_z;
+                best_t = t;
+            }
+        }
+
+        if (self.has_clicked) {
+            g.active = null;
+            if (updated_state != .None) {
+                //             transform(draw_scale, ray);
+                //             g.gizmos[id].original_position = center;
+                //             g.gizmos[id].original_orientation = orientation;
+                //             g.gizmos[id].click_offset = p.transform_point(ray.origin + ray.direction * t);
+                //             g.gizmos[id].active = true;
+            }
+        }
+
+        // float3 activeAxis;
+        // if (g.gizmos[id].active)
+        // {
+        //     const float4 starting_orientation = g.local_toggle ? g.gizmos[id].original_orientation : float4(0, 0, 0, 1);
+        //     switch (g.gizmos[id].interaction_mode)
+        //     {
+        //     case interact::rotate_x: axis_rotation_dragger(id, g, { 1, 0, 0 }, center, starting_orientation, p.orientation); activeAxis = { 1, 0, 0 }; break;
+        //     case interact::rotate_y: axis_rotation_dragger(id, g, { 0, 1, 0 }, center, starting_orientation, p.orientation); activeAxis = { 0, 1, 0 }; break;
+        //     case interact::rotate_z: axis_rotation_dragger(id, g, { 0, 0, 1 }, center, starting_orientation, p.orientation); activeAxis = { 0, 0, 1 }; break;
+        //     }
+        // }
+
+        if (self.has_released) {
+            g.active = null;
+        }
+
+        const scaleMatrix = Mat4.scale(.{
+            .x = draw_scale,
+            .y = draw_scale,
+            .z = draw_scale,
+        });
+        const modelMatrix = p.matrix().mul(scaleMatrix);
+
+        // std::vector<interact> draw_interactions;
+        // if (!g.local_toggle && g.gizmos[id].interaction_mode != interact::none) draw_interactions = { g.gizmos[id].interaction_mode };
+        // else draw_interactions = { interact::rotate_x, interact::rotate_y, interact::rotate_z };
+
+        for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
+            if (MeshComponent.get(i)) |c| {
+                try self.drawlist.append(.{
+                    .mesh = c,
+                    .matrix = modelMatrix,
+                    .hover = i == updated_state,
+                    .active = false,
+                });
+            }
+        }
+
+        // // For non-local transformations, we only present one rotation ring
+        // // and draw an arrow from the center of the gizmo to indicate the degree of rotation
+        // if (g.local_toggle == false && g.gizmos[id].interaction_mode != interact::none)
+        // {
+        //     interaction_state & interaction = g.gizmos[id];
+        //
+        //     // Create orthonormal basis for drawing the arrow
+        //     float3 a = qrot(p.orientation, interaction.click_offset - interaction.original_position);
+        //     float3 zDir = normalize(activeAxis), xDir = normalize(cross(a, zDir)), yDir = cross(zDir, xDir);
+        //
+        //     // Ad-hoc geometry
+        //     std::initializer_list<float2> arrow_points = { { 0.0f, 0.f },{ 0.0f, 0.05f },{ 0.8f, 0.05f },{ 0.9f, 0.10f },{ 1.0f, 0 } };
+        //     auto geo = make_lathed_geometry(yDir, xDir, zDir, 32, arrow_points);
+        //
+        //     gizmo_renderable r;
+        //     r.mesh = geo;
+        //     r.color = float4(1);
+        //     for (auto & v : r.mesh.vertices)
+        //     {
+        //         v.position = transform_coord(modelMatrix, v.position);
+        //         v.normal = transform_vector(modelMatrix, v.normal);
+        //     }
+        //     g.drawlist.push_back(r);
+        //
+        //     orientation = qmul(p.orientation, interaction.original_orientation);
+        // }
+        // else if (g.local_toggle == true && g.gizmos[id].interaction_mode != interact::none) orientation = p.orientation;
+        //
     }
 
     fn scale_gizmo(_: @This(), name: []const u8, t: *rowmath.Transform) void {

@@ -206,8 +206,10 @@ export fn frame() void {
             .cam_yFov = state.display.camera.yFov,
             .cam_dir = state.display.camera.transform.rotation.dirZ().negate(),
         });
-        state.gizmo_ctx.translation("first-example-gizmo", &scene.state.xform_a) catch @panic("transform a");
+
+        state.gizmo_ctx.rotation("first-example-gizmo", &scene.state.xform_a) catch @panic("transform a");
         state.gizmo_ctx.translation("second-example-gizmo", &scene.state.xform_b) catch @panic("transform b");
+
     }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image

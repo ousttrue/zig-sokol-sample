@@ -413,7 +413,7 @@ pub const Quat = struct {
     z: f32,
     w: f32,
 
-    pub const indentity: Quat = .{
+    pub const identity: Quat = .{
         .x = 0,
         .y = 0,
         .z = 0,
@@ -439,14 +439,18 @@ pub const Quat = struct {
         };
     }
 
+    pub fn length2(q: @This()) f32 {
+        return q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+    }
+
     pub fn inverse(q: @This()) @This() {
-        const length2 = q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w;
+        const sqlen = q.length2();
         const c = q.conj();
         return .{
-            .x = c.x / length2,
-            .y = c.y / length2,
-            .z = c.z / length2,
-            .w = c.w / length2,
+            .x = c.x / sqlen,
+            .y = c.y / sqlen,
+            .z = c.z / sqlen,
+            .w = c.w / sqlen,
         };
     }
 
@@ -498,7 +502,7 @@ pub const Quat = struct {
 };
 
 pub const RigidTransform = struct {
-    rotation: Quat = Quat.indentity,
+    rotation: Quat = Quat.identity,
     translation: Vec3 = Vec3.zero,
 
     pub fn localToWorld(self: @This()) Mat4 {
