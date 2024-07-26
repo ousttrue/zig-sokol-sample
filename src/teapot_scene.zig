@@ -5,6 +5,7 @@ const rowmath = @import("rowmath.zig");
 const Mat4 = rowmath.Mat4;
 const Vec3 = rowmath.Vec3;
 const Quat = rowmath.Quat;
+const Transform = rowmath.Transform;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
 const InputState = @import("input_state.zig").InputState;
@@ -13,8 +14,9 @@ const RenderTarget = @import("camera.zig").RenderTarget;
 
 pub const state = struct {
     var bind: sg.Bindings = .{};
-    pub var xform_a = rowmath.Transform{};
-    pub var xform_b = rowmath.Transform{};
+    pub var xform_a = Transform{};
+    pub var xform_b = Transform{};
+    pub var xform_c = Transform{};
     var pip: sg.Pipeline = .{};
     var offscreen_pip: sg.Pipeline = .{};
 };
@@ -22,6 +24,7 @@ pub const state = struct {
 pub fn setup() void {
     state.xform_a.rigid_transform.translation.x = -2;
     state.xform_b.rigid_transform.translation.x = 2;
+    state.xform_c.rigid_transform.translation.z = -2;
 
     // cube vertex buffer
     state.bind.vertex_buffers[0] = sg.makeBuffer(.{
@@ -82,23 +85,17 @@ pub fn draw(camera: Camera, renderTarget: RenderTarget) void {
         },
     };
 
-    {
-        const vsParams = shd.VsParams{
-            .u_viewProj = mat4_to_array(&viewProj).*,
-            .u_modelMatrix = mat4_to_array(&state.xform_a.matrix()).*,
-        };
-        sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vsParams));
-        sg.applyUniforms(.FS, shd.SLOT_fs_params, sg.asRange(&fsParams));
-        sg.draw(0, geometry.teapot_triangles.len, 1);
-    }
+    draw_teapot(state.xform_a, &viewProj, &fsParams);
+    draw_teapot(state.xform_b, &viewProj, &fsParams);
+    draw_teapot(state.xform_c, &viewProj, &fsParams);
+}
 
-    {
-        const vsParams = shd.VsParams{
-            .u_viewProj = mat4_to_array(&viewProj).*,
-            .u_modelMatrix = mat4_to_array(&state.xform_b.matrix()).*,
-        };
-        sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vsParams));
-        sg.applyUniforms(.FS, shd.SLOT_fs_params, sg.asRange(&fsParams));
-        sg.draw(0, geometry.teapot_triangles.len, 1);
-    }
+fn draw_teapot(t: Transform, viewProj: *const Mat4, fsParams: *const shd.FsParams) void {
+    const vsParams = shd.VsParams{
+        .u_viewProj = mat4_to_array(viewProj).*,
+        .u_modelMatrix = mat4_to_array(&t.matrix()).*,
+    };
+    sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&vsParams));
+    sg.applyUniforms(.FS, shd.SLOT_fs_params, sg.asRange(fsParams));
+    sg.draw(0, geometry.teapot_triangles.len, 1);
 }

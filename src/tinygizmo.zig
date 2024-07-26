@@ -292,7 +292,14 @@ const ARROW_POINTS = [_]Vec2{
     .{ .x = 1, .y = 0.10 },
     .{ .x = 1.2, .y = 0 },
 };
-// std::vector<float2> mace_points             = { { 0.25f, 0 }, { 0.25f, 0.05f },{ 1, 0.05f },{ 1, 0.1f },{ 1.25f, 0.1f }, { 1.25f, 0 } };
+const MACE_POINTS = [_]Vec2{
+    .{ .x = 0.25, .y = 0 },
+    .{ .x = 0.25, .y = 0.05 },
+    .{ .x = 1, .y = 0.05 },
+    .{ .x = 1, .y = 0.1 },
+    .{ .x = 1.25, .y = 0.1 },
+    .{ .x = 1.25, .y = 0 },
+};
 const RING_POINTS = [_]Vec2{
     .{ .x = 0.025, .y = 1 },
     .{ .x = -0.025, .y = 1 },
@@ -384,6 +391,19 @@ const MeshComponent = struct {
         BASE_BLUE,
     );
 
+    const scale_x = MeshComponent.init(
+        make_lathed_geometry(RIGHT, UP, FORWARD, 16, &MACE_POINTS, 0),
+        BASE_RED,
+    );
+    const scale_y = MeshComponent.init(
+        make_lathed_geometry(UP, FORWARD, RIGHT, 16, &MACE_POINTS, 0),
+        BASE_GREEN,
+    );
+    const scale_z = MeshComponent.init(
+        make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
+        BASE_BLUE,
+    );
+
     fn get(i: InteractionMode) ?MeshComponent {
         return switch (i) {
             .None => null,
@@ -397,28 +417,11 @@ const MeshComponent = struct {
             .Rotate_x => rotate_x,
             .Rotate_y => rotate_y,
             .Rotate_z => rotate_z,
-            .Scale_x => null,
-            .Scale_y => null,
-            .Scale_z => null,
+            .Scale_x => scale_x,
+            .Scale_y => scale_y,
+            .Scale_z => scale_z,
             .Scale_xyz => null,
         };
-    }
-    // mesh_components[interact::scale_x]          = { make_lathed_geometry({ 1,0,0 },{ 0,1,0 },{ 0,0,1 }, 16, mace_points),{ 1,0.5f,0.5f, 1.f },{ 1,0,0, 1.f } };
-    // mesh_components[interact::scale_y]          = { make_lathed_geometry({ 0,1,0 },{ 0,0,1 },{ 1,0,0 }, 16, mace_points),{ 0.5f,1,0.5f, 1.f },{ 0,1,0, 1.f } };
-    // mesh_components[interact::scale_z]          = { make_lathed_geometry({ 0,0,1 },{ 1,0,0 },{ 0,1,0 }, 16, mace_points),{ 0.5f,0.5f,1, 1.f },{ 0,0,1, 1.f } };
-
-    // The only purpose of this is readability: to reduce the total column width of the intersect(...) statements in every gizmo
-    // fn intersect(ray: Ray, i: InteractionMode, best_t: f32) ?f32 {
-    //     if (MeshComponent.get(i)) |c| {
-    //         const t = c.mesh.intersect(ray);
-    //         if (t < best_t) {
-    //             return t;
-    //         }
-    //     }
-    //     return null;
-    // }
-    fn intersect(self: @This(), ray: Ray) ?f32 {
-        return self.mesh.intersect(ray);
     }
 };
 
@@ -493,43 +496,43 @@ pub const Context = struct {
 
             var best_t = std.math.inf(f32);
 
-            if (MeshComponent.translate_x.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_x.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_x;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_y.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_y.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_y;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_z.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_z.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_z;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_yz.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_yz.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_yz;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_zx.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_zx.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_zx;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_xy.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_xy.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_xy;
                     best_t = t;
                 }
             }
-            if (MeshComponent.translate_xyz.intersect(local_ray)) |t| {
+            if (MeshComponent.translate_xyz.mesh.intersect(local_ray)) |t| {
                 if (t < best_t) {
                     updated_state = .Translate_xyz;
                     best_t = t;
@@ -676,19 +679,19 @@ pub const Context = struct {
         local_ray.descale(draw_scale);
         var best_t = std.math.inf(f32);
 
-        if (MeshComponent.rotate_x.intersect(local_ray)) |t| {
+        if (MeshComponent.rotate_x.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_x;
                 best_t = t;
             }
         }
-        if (MeshComponent.rotate_y.intersect(local_ray)) |t| {
+        if (MeshComponent.rotate_y.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_y;
                 best_t = t;
             }
         }
-        if (MeshComponent.rotate_z.intersect(local_ray)) |t| {
+        if (MeshComponent.rotate_z.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_z;
                 best_t = t;
@@ -774,8 +777,85 @@ pub const Context = struct {
         //
     }
 
-    fn scale_gizmo(_: @This(), name: []const u8, t: *rowmath.Transform) void {
-        _ = t; // autofix
-        _ = name; // autofix
+    pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform) !void {
+        const p = Transform.trs(
+            _p.rigid_transform.translation,
+            _p.rigid_transform.rotation,
+            Vec3.one,
+        );
+        const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
+        const id = hash_fnv1a(name);
+        const g = self.get_or_add(id);
+        _ = g;
+
+        // if (g.has_clicked) g.gizmos[id].interaction_mode = interact::none;
+        //
+        // {
+        var updated_state: InteractionMode = .None;
+        var local_ray = detransform(p, self.active_state.ray);
+        local_ray.descale(draw_scale);
+
+        var best_t = std.math.inf(f32);
+        if (MeshComponent.scale_x.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Scale_x;
+                best_t = t;
+            }
+        }
+        if (MeshComponent.scale_y.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Scale_y;
+                best_t = t;
+            }
+        }
+        if (MeshComponent.scale_z.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Scale_z;
+                best_t = t;
+            }
+        }
+
+        //     if (g.has_clicked)
+        //     {
+        //         g.gizmos[id].interaction_mode = updated_state;
+        //         if (g.gizmos[id].interaction_mode != interact::none)
+        //         {
+        //             transform(draw_scale, ray);
+        //             g.gizmos[id].original_scale = scale;
+        //             g.gizmos[id].click_offset = p.transform_point(ray.origin + ray.direction*t);
+        //             g.gizmos[id].active = true;
+        //         }
+        //         else g.gizmos[id].active = false;
+        //     }
+        // }
+        //
+        // if (g.has_released)
+        // {
+        //     g.gizmos[id].interaction_mode = interact::none;
+        //     g.gizmos[id].active = false;
+        // }
+        //
+        // if (g.gizmos[id].active)
+        // {
+        //     switch (g.gizmos[id].interaction_mode)
+        //     {
+        //     case interact::scale_x: axis_scale_dragger(id, g, { 1,0,0 }, center, scale, g.active_state.hotkey_ctrl); break;
+        //     case interact::scale_y: axis_scale_dragger(id, g, { 0,1,0 }, center, scale, g.active_state.hotkey_ctrl); break;
+        //     case interact::scale_z: axis_scale_dragger(id, g, { 0,0,1 }, center, scale, g.active_state.hotkey_ctrl); break;
+        //     }
+        // }
+
+        const scaleMatrix = Mat4.scale_uniform(draw_scale);
+        const modelMatrix = p.matrix().mul(scaleMatrix);
+        for ([_]InteractionMode{ .Scale_x, .Scale_y, .Scale_z }) |i| {
+            if (MeshComponent.get(i)) |c| {
+                try self.drawlist.append(.{
+                    .mesh = c,
+                    .matrix = modelMatrix,
+                    .hover = i == updated_state,
+                    .active = false,
+                });
+            }
+        }
     }
 };

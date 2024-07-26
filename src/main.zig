@@ -209,6 +209,7 @@ export fn frame() void {
 
         state.gizmo_ctx.rotation("first-example-gizmo", &scene.state.xform_a) catch @panic("transform a");
         state.gizmo_ctx.translation("second-example-gizmo", &scene.state.xform_b) catch @panic("transform b");
+        state.gizmo_ctx.scale("third-example-gizmo", &scene.state.xform_c) catch @panic("transform b");
 
     }
 

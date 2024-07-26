@@ -158,6 +158,10 @@ pub const Mat4 = extern struct {
         };
     }
 
+    pub fn scale_uniform(s: f32) Mat4 {
+        return scale(.{ .x = s, .y = s, .z = s });
+    }
+
     pub fn row0(self: Mat4) Vec4 {
         return .{ .x = self.m[0], .y = self.m[1], .z = self.m[2], .w = self.m[3] };
     }
