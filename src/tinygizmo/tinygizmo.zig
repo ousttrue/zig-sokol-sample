@@ -7,7 +7,94 @@ const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 const Ray = rowmath.Ray;
 const Transform = rowmath.Transform;
-const TAU = 6.28318530718;
+const geometry = @import("geometry.zig");
+
+const translate_x = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 16, &ARROW_POINTS, 0),
+    BASE_RED,
+);
+const translate_y = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 16, &ARROW_POINTS, 0),
+    BASE_GREEN,
+);
+const translate_z = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &ARROW_POINTS, 0),
+    BASE_BLUE,
+);
+const translate_yz = geometry.MeshComponent.init(
+    geometry.make_box_geometry(
+        .{ .x = -0.01, .y = 0.25, .z = 0.25 },
+        .{ .x = 0.01, .y = 0.75, .z = 0.75 },
+    ),
+    BASE_CYAN,
+);
+const translate_zx = geometry.MeshComponent.init(
+    geometry.make_box_geometry(
+        .{ .x = 0.25, .y = -0.01, .z = 0.25 },
+        .{ .x = 0.75, .y = 0.01, .z = 0.75 },
+    ),
+    BASE_MAGENTA,
+);
+const translate_xy = geometry.MeshComponent.init(
+    geometry.make_box_geometry(
+        .{ .x = 0.25, .y = 0.25, .z = -0.01 },
+        .{ .x = 0.75, .y = 0.75, .z = 0.01 },
+    ),
+    BASE_YELLOW,
+);
+const translate_xyz = geometry.MeshComponent.init(
+    geometry.make_box_geometry(
+        .{ .x = -0.05, .y = -0.05, .z = -0.05 },
+        .{ .x = 0.05, .y = 0.05, .z = 0.05 },
+    ),
+    BASE_GRAY,
+);
+
+const rotate_x = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 32, &RING_POINTS, 0.003),
+    BASE_RED,
+);
+const rotate_y = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 32, &RING_POINTS, -0.003),
+    BASE_GREEN,
+);
+const rotate_z = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
+    BASE_BLUE,
+);
+
+const scale_x = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(RIGHT, UP, FORWARD, 16, &MACE_POINTS, 0),
+    BASE_RED,
+);
+const scale_y = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(UP, FORWARD, RIGHT, 16, &MACE_POINTS, 0),
+    BASE_GREEN,
+);
+const scale_z = geometry.MeshComponent.init(
+    geometry.make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
+    BASE_BLUE,
+);
+
+fn get(i: InteractionMode) ?geometry.MeshComponent {
+    return switch (i) {
+        .None => null,
+        .Translate_x => translate_x,
+        .Translate_y => translate_y,
+        .Translate_z => translate_z,
+        .Translate_yz => translate_yz,
+        .Translate_zx => translate_zx,
+        .Translate_xy => translate_xy,
+        .Translate_xyz => translate_xyz,
+        .Rotate_x => rotate_x,
+        .Rotate_y => rotate_y,
+        .Rotate_z => rotate_z,
+        .Scale_x => scale_x,
+        .Scale_y => scale_y,
+        .Scale_z => scale_z,
+        .Scale_xyz => null,
+    };
+}
 
 fn snap(value: Vec3, f: f32) ?Vec3 {
     if (f > 0.0) {
@@ -19,14 +106,6 @@ fn snap(value: Vec3, f: f32) ?Vec3 {
     }
     return null;
 }
-
-pub const CameraParameters = struct {
-    yfov: f32 = 0,
-    near_clip: f32 = 0,
-    far_clip: f32 = 0,
-    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    orientation: Quat = Quat.indentity,
-};
 
 pub const ApplicationState = struct {
     // 3d viewport used to render the view
@@ -49,10 +128,33 @@ pub const ApplicationState = struct {
     snap_scale: f32 = 0,
     // Radians used for snapping rotation quaternions (i.e. PI/8 or PI/16)
     snap_rotation: f32 = 0,
+
+    fn scale_screenspace(self: @This(), position: rowmath.Vec3, pixel_scale: f32) f32 {
+        const dist = position.sub(self.ray.origin).len();
+        return std.math.tan(self.cam_yFov) * dist * (pixel_scale / self.viewport_size.y);
+    }
+
+    fn draw_scale(self: @This(), p: Transform) f32 {
+        if (self.screenspace_scale > 0.0) {
+            return self.scale_screenspace(
+                p.rigid_transform.translation,
+                self.screenspace_scale,
+            );
+        } else {
+            return 1.0;
+        }
+    }
+
+    fn local_ray(self: @This(), p: Transform) struct { Ray, f32 } {
+        return .{
+            detransform(p, self.ray),
+            self.draw_scale(p),
+        };
+    }
 };
 
 const Renderable = struct {
-    mesh: MeshComponent,
+    mesh: geometry.MeshComponent,
     matrix: Mat4,
     hover: bool,
     active: bool,
@@ -221,205 +323,6 @@ const Interaction = struct {
     active: ?Drag = null,
 };
 
-const GeometryVertex = struct {
-    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    normal: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    color: Vec4 = .{ .x = 0, .y = 0, .z = 0, .w = 0 },
-};
-
-const Triangle = struct {
-    v0: Vec3,
-    v1: Vec3,
-    v2: Vec3,
-
-    fn intersect(self: @This(), ray: Ray) ?f32 {
-        const e1 = self.v1.sub(self.v0);
-        const e2 = self.v2.sub(self.v0);
-        const h = ray.direction.cross(e2);
-        const a = e1.dot(h);
-        if (@abs(a) == 0) {
-            return null;
-        }
-
-        const f = 1 / a;
-        const s = ray.origin.sub(self.v0);
-        const u = f * s.dot(h);
-        if (u < 0 or u > 1) {
-            return null;
-        }
-
-        const q = s.cross(e1);
-        const v = f * ray.direction.dot(q);
-        if (v < 0 or u + v > 1) {
-            return null;
-        }
-
-        const t = f * e2.dot(q);
-        if (t < 0) {
-            return null;
-        }
-
-        return t;
-    }
-};
-
-const Mat32 = struct {
-    row0: Vec3,
-    row1: Vec3,
-    fn mul(a: @This(), b: Vec2) Vec3 {
-        return a.row0.scale(b.x).add(a.row1.scale(b.y));
-    }
-};
-
-fn make_const_mesh(_vertices: anytype, _triangles: anytype) type {
-    return struct {
-        const vertices = _vertices;
-        const triangles = _triangles;
-    };
-}
-
-fn make_lathed_geometry(
-    comptime axis: Vec3,
-    comptime arm1: Vec3,
-    comptime arm2: Vec3,
-    comptime slices: i32,
-    comptime points: []const Vec2,
-    comptime eps: f32,
-) type {
-    var vertices = [1]GeometryVertex{.{}} ** ((slices + 1) * points.len);
-    var triangles = [1][3]u16{.{ 0, 0, 0 }} ** (slices * (points.len - 1) * 6);
-    var v_index: usize = 0;
-    var t_index: usize = 0;
-
-    @setEvalBranchQuota(2000);
-    for (0..slices + 1) |i| {
-        const angle = (@as(f32, @floatFromInt(i % slices)) * TAU / slices) + (TAU / 8.0);
-        const c = std.math.cos(angle);
-        const s = std.math.sin(angle);
-        const mat = Mat32{ .row0 = axis, .row1 = arm1.scale(c).add(arm2.scale(s)) };
-        for (points) |p| {
-            vertices[v_index].position = mat.mul(p).add(.{ .x = eps, .y = eps, .z = eps });
-            v_index += 1;
-        }
-
-        if (i > 0) {
-            for (1..points.len) |j| {
-                const index0: u16 = @intCast((i - 1) * (points.len) + (j - 1));
-                const index1: u16 = @intCast((i - 0) * (points.len) + (j - 1));
-                const index2: u16 = @intCast((i - 0) * (points.len) + (j - 0));
-                const index3: u16 = @intCast((i - 1) * (points.len) + (j - 0));
-                triangles[t_index] = .{ index0, index1, index2 };
-                t_index += 1;
-                triangles[t_index] = .{ index0, index2, index3 };
-                t_index += 1;
-            }
-        }
-    }
-
-    compute_normals(&vertices, &triangles);
-
-    return make_const_mesh(vertices, triangles);
-}
-
-fn compute_normals(vertices: []GeometryVertex, triangles: []const [3]u16) void {
-    const NORMAL_EPSILON = 0.0001;
-    @setEvalBranchQuota(100000);
-
-    var uniqueVertIndices = [1]u16{0} ** vertices.len;
-    for (0..vertices.len) |i| {
-        if (uniqueVertIndices[i] == 0) {
-            uniqueVertIndices[i] = i + 1;
-            const v0 = vertices[i].position;
-            for (i..vertices.len) |j| {
-                const v1 = vertices[j].position;
-                if (v1.sub(v0).len2() < NORMAL_EPSILON) {
-                    uniqueVertIndices[j] = uniqueVertIndices[i];
-                }
-            }
-        }
-    }
-
-    // uint32_t idx0, idx1, idx2;
-    for (triangles) |t| {
-        const idx0 = uniqueVertIndices[t[0]] - 1;
-        const idx1 = uniqueVertIndices[t[1]] - 1;
-        const idx2 = uniqueVertIndices[t[2]] - 1;
-        var v0 = vertices[idx0];
-        var v1 = vertices[idx1];
-        var v2 = vertices[idx2];
-        const n = v1.position.sub(v0.position).cross(v2.position.sub(v0.position));
-        v0.normal = v0.normal.add(n);
-        v1.normal = v1.normal.add(n);
-        v2.normal = v2.normal.add(n);
-    }
-
-    for (0..vertices.len) |i| {
-        vertices[i].normal = vertices[uniqueVertIndices[i] - 1].normal;
-    }
-    for (vertices) |*v| {
-        v.normal = v.normal.norm();
-    }
-}
-
-fn make_box_geometry(a: Vec3, b: Vec3) type {
-    // geometry_mesh mesh;
-    const vertices = [_]GeometryVertex{
-        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = -1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 1, .y = 0, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = -1, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 1, .z = 0 } },
-        .{ .position = .{ .x = a.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = a.z }, .normal = .{ .x = 0, .y = 0, .z = -1 } },
-        .{ .position = .{ .x = a.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
-        .{ .position = .{ .x = b.x, .y = a.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
-        .{ .position = .{ .x = b.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
-        .{ .position = .{ .x = a.x, .y = b.y, .z = b.z }, .normal = .{ .x = 0, .y = 0, .z = 1 } },
-    };
-    const triangles = [_][3]u16{
-        .{ 0, 1, 2 },    .{ 0, 2, 3 },    .{ 4, 5, 6 },    .{ 4, 6, 7 },    .{ 8, 9, 10 },
-        .{ 8, 10, 11 },  .{ 12, 13, 14 }, .{ 12, 14, 15 }, .{ 16, 17, 18 }, .{ 16, 18, 19 },
-        .{ 20, 21, 22 }, .{ 20, 22, 23 },
-    };
-
-    return make_const_mesh(vertices, triangles);
-}
-
-const GeometryMesh = struct {
-    vertices: []const GeometryVertex,
-    triangles: []const [3]u16,
-
-    fn intersect(self: @This(), ray: Ray) ?f32 {
-        var best_t = std.math.inf(f32);
-        for (self.triangles) |a| {
-            const triangle = Triangle{
-                .v0 = self.vertices[a[0]].position,
-                .v1 = self.vertices[a[1]].position,
-                .v2 = self.vertices[a[2]].position,
-            };
-            if (triangle.intersect(ray)) |t| {
-                if (t < best_t) {
-                    best_t = t;
-                }
-            }
-        }
-        return if (best_t == std.math.inf(f32)) null else best_t;
-    }
-};
-
 const ARROW_POINTS = [_]Vec2{
     .{ .x = 0.25, .y = 0 },
     .{ .x = 0.25, .y = 0.05 },
@@ -457,108 +360,6 @@ const BASE_GRAY: Vec4 = .{ .x = 0.7, .y = 0.7, .z = 0.7, .w = 1.0 };
 const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
 const UP: Vec3 = .{ .x = 0, .y = 1, .z = 0 };
 const FORWARD: Vec3 = .{ .x = 0, .y = 0, .z = 1 };
-
-const MeshComponent = struct {
-    mesh: GeometryMesh,
-    base_color: Vec4,
-
-    fn init(mesh: type, base_color: Vec4) @This() {
-        return .{
-            .mesh = .{
-                .vertices = &mesh.vertices,
-                .triangles = &mesh.triangles,
-            },
-            .base_color = base_color,
-        };
-    }
-
-    const translate_x = MeshComponent.init(
-        make_lathed_geometry(RIGHT, UP, FORWARD, 16, &ARROW_POINTS, 0),
-        BASE_RED,
-    );
-    const translate_y = MeshComponent.init(
-        make_lathed_geometry(UP, FORWARD, RIGHT, 16, &ARROW_POINTS, 0),
-        BASE_GREEN,
-    );
-    const translate_z = MeshComponent.init(
-        make_lathed_geometry(FORWARD, RIGHT, UP, 16, &ARROW_POINTS, 0),
-        BASE_BLUE,
-    );
-    const translate_yz = MeshComponent.init(
-        make_box_geometry(
-            .{ .x = -0.01, .y = 0.25, .z = 0.25 },
-            .{ .x = 0.01, .y = 0.75, .z = 0.75 },
-        ),
-        BASE_CYAN,
-    );
-    const translate_zx = MeshComponent.init(
-        make_box_geometry(
-            .{ .x = 0.25, .y = -0.01, .z = 0.25 },
-            .{ .x = 0.75, .y = 0.01, .z = 0.75 },
-        ),
-        BASE_MAGENTA,
-    );
-    const translate_xy = MeshComponent.init(
-        make_box_geometry(
-            .{ .x = 0.25, .y = 0.25, .z = -0.01 },
-            .{ .x = 0.75, .y = 0.75, .z = 0.01 },
-        ),
-        BASE_YELLOW,
-    );
-    const translate_xyz = MeshComponent.init(
-        make_box_geometry(
-            .{ .x = -0.05, .y = -0.05, .z = -0.05 },
-            .{ .x = 0.05, .y = 0.05, .z = 0.05 },
-        ),
-        BASE_GRAY,
-    );
-
-    const rotate_x = MeshComponent.init(
-        make_lathed_geometry(RIGHT, UP, FORWARD, 32, &RING_POINTS, 0.003),
-        BASE_RED,
-    );
-    const rotate_y = MeshComponent.init(
-        make_lathed_geometry(UP, FORWARD, RIGHT, 32, &RING_POINTS, -0.003),
-        BASE_GREEN,
-    );
-    const rotate_z = MeshComponent.init(
-        make_lathed_geometry(FORWARD, RIGHT, UP, 32, &RING_POINTS, 0),
-        BASE_BLUE,
-    );
-
-    const scale_x = MeshComponent.init(
-        make_lathed_geometry(RIGHT, UP, FORWARD, 16, &MACE_POINTS, 0),
-        BASE_RED,
-    );
-    const scale_y = MeshComponent.init(
-        make_lathed_geometry(UP, FORWARD, RIGHT, 16, &MACE_POINTS, 0),
-        BASE_GREEN,
-    );
-    const scale_z = MeshComponent.init(
-        make_lathed_geometry(FORWARD, RIGHT, UP, 16, &MACE_POINTS, 0),
-        BASE_BLUE,
-    );
-
-    fn get(i: InteractionMode) ?MeshComponent {
-        return switch (i) {
-            .None => null,
-            .Translate_x => translate_x,
-            .Translate_y => translate_y,
-            .Translate_z => translate_z,
-            .Translate_yz => translate_yz,
-            .Translate_zx => translate_zx,
-            .Translate_xy => translate_xy,
-            .Translate_xyz => translate_xyz,
-            .Rotate_x => rotate_x,
-            .Rotate_y => rotate_y,
-            .Rotate_z => rotate_z,
-            .Scale_x => scale_x,
-            .Scale_y => scale_y,
-            .Scale_z => scale_z,
-            .Scale_xyz => null,
-        };
-    }
-};
 
 fn intersect_ray_plane(ray: Ray, plane: Vec4) ?f32 {
     const denom = (Vec3{ .x = plane.x, .y = plane.y, .z = plane.z }).dot(ray.direction);
@@ -622,11 +423,6 @@ pub const Context = struct {
     }
 
     // This will calculate a scale constant based on the number of screenspace pixels passed as pixel_scale.
-    fn scale_screenspace(self: @This(), position: rowmath.Vec3, pixel_scale: f32) f32 {
-        const dist = position.sub(self.active_state.ray.origin).len();
-        return std.math.tan(self.active_state.cam_yFov) * dist * (pixel_scale / self.active_state.viewport_size.y);
-    }
-
     fn get_or_add(self: *@This(), id: u32) *Interaction {
         if (self.gizmos.getPtr(id)) |gizmo| {
             return gizmo;
@@ -648,140 +444,136 @@ pub const Context = struct {
             if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
         );
-        const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
+        var local_ray, const draw_scale = self.active_state.local_ray(p);
+        local_ray.descale(draw_scale);
+
+        var updated_state: InteractionMode = .None;
+
+        var best_t = std.math.inf(f32);
+        if (translate_x.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_x;
+                best_t = t;
+            }
+        }
+        if (translate_y.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_y;
+                best_t = t;
+            }
+        }
+        if (translate_z.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_z;
+                best_t = t;
+            }
+        }
+        if (translate_yz.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_yz;
+                best_t = t;
+            }
+        }
+        if (translate_zx.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_zx;
+                best_t = t;
+            }
+        }
+        if (translate_xy.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_xy;
+                best_t = t;
+            }
+        }
+        if (translate_xyz.mesh.intersect(local_ray)) |t| {
+            if (t < best_t) {
+                updated_state = .Translate_xyz;
+                best_t = t;
+            }
+        }
+
         const id = hash_fnv1a(name);
         var g = self.get_or_add(id);
-
-        {
-            var updated_state: InteractionMode = .None;
-            var local_ray = detransform(p, self.active_state.ray);
-            local_ray.descale(draw_scale);
-
-            var best_t = std.math.inf(f32);
-
-            if (MeshComponent.translate_x.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_x;
-                    best_t = t;
-                }
+        if (self.has_clicked) {
+            g.active = null;
+            if (updated_state != .None) {
+                local_ray.scale(draw_scale);
+                const point = local_ray.point(best_t);
+                const active = Drag{
+                    .mode = updated_state,
+                    .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
+                };
+                g.active = active;
             }
-            if (MeshComponent.translate_y.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_y;
-                    best_t = t;
-                }
-            }
-            if (MeshComponent.translate_z.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_z;
-                    best_t = t;
-                }
-            }
-            if (MeshComponent.translate_yz.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_yz;
-                    best_t = t;
-                }
-            }
-            if (MeshComponent.translate_zx.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_zx;
-                    best_t = t;
-                }
-            }
-            if (MeshComponent.translate_xy.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_xy;
-                    best_t = t;
-                }
-            }
-            if (MeshComponent.translate_xyz.mesh.intersect(local_ray)) |t| {
-                if (t < best_t) {
-                    updated_state = .Translate_xyz;
-                    best_t = t;
-                }
-            }
-
-            if (self.has_clicked) {
-                g.active = null;
-                if (updated_state != .None) {
-                    local_ray.scale(draw_scale);
-                    const point = local_ray.point(best_t);
-                    const active = Drag{
-                        .mode = updated_state,
-                        .click_offset = if (self.local_toggle) p.transform_vector(point) else point,
-                    };
-                    g.active = active;
-                }
-            }
-
-            const axes = if (self.local_toggle) [3]Vec3{
-                p.rigid_transform.rotation.dirX(),
-                p.rigid_transform.rotation.dirY(),
-                p.rigid_transform.rotation.dirZ(),
-            } else [3]Vec3{
-                .{ .x = 1, .y = 0, .z = 0 },
-                .{ .x = 0, .y = 1, .z = 0 },
-                .{ .x = 0, .y = 0, .z = 1 },
-            };
-
-            if (g.active) |*active| {
-                if (self.active_state.mouse_left) {
-                    var position = p.rigid_transform.translation.add(active.click_offset);
-                    if (switch (active.mode) {
-                        .Translate_x => self.axis_translation_dragger(active, axes[0], position),
-                        .Translate_y => self.axis_translation_dragger(active, axes[1], position),
-                        .Translate_z => self.axis_translation_dragger(active, axes[2], position),
-                        .Translate_yz => self.plane_translation_dragger(active, axes[0], position),
-                        .Translate_zx => self.plane_translation_dragger(active, axes[1], position),
-                        .Translate_xy => self.plane_translation_dragger(active, axes[2], position),
-                        .Translate_xyz => self.plane_translation_dragger(
-                            active,
-                            self.active_state.cam_dir, //.orientation.dirZ().negate(),
-                            position,
-                        ),
-                        else => @panic("switch"),
-                    }) |new_position| {
-                        position = new_position;
-                    }
-                    p.rigid_transform.translation = position.sub(active.click_offset);
-                }
-            }
-
-            if (self.has_released) {
-                g.active = null;
-            }
-
-            const draw_interactions = [_]InteractionMode{
-                .Translate_x,
-                .Translate_y,
-                .Translate_z,
-                .Translate_yz,
-                .Translate_zx,
-                .Translate_xy,
-                .Translate_xyz,
-            };
-
-            const scaleMatrix = Mat4.scale(.{
-                .x = draw_scale,
-                .y = draw_scale,
-                .z = draw_scale,
-            });
-            const modelMatrix = p.matrix().mul(scaleMatrix);
-
-            for (draw_interactions) |i| {
-                if (MeshComponent.get(i)) |c| {
-                    try self.drawlist.append(.{
-                        .mesh = c,
-                        .matrix = modelMatrix,
-                        .hover = i == updated_state,
-                        .active = false,
-                    });
-                }
-            }
-
-            _p.* = p;
         }
+
+        const axes = if (self.local_toggle) [3]Vec3{
+            p.rigid_transform.rotation.dirX(),
+            p.rigid_transform.rotation.dirY(),
+            p.rigid_transform.rotation.dirZ(),
+        } else [3]Vec3{
+            .{ .x = 1, .y = 0, .z = 0 },
+            .{ .x = 0, .y = 1, .z = 0 },
+            .{ .x = 0, .y = 0, .z = 1 },
+        };
+
+        if (g.active) |*active| {
+            if (self.active_state.mouse_left) {
+                var position = p.rigid_transform.translation.add(active.click_offset);
+                if (switch (active.mode) {
+                    .Translate_x => self.axis_translation_dragger(active, axes[0], position),
+                    .Translate_y => self.axis_translation_dragger(active, axes[1], position),
+                    .Translate_z => self.axis_translation_dragger(active, axes[2], position),
+                    .Translate_yz => self.plane_translation_dragger(active, axes[0], position),
+                    .Translate_zx => self.plane_translation_dragger(active, axes[1], position),
+                    .Translate_xy => self.plane_translation_dragger(active, axes[2], position),
+                    .Translate_xyz => self.plane_translation_dragger(
+                        active,
+                        self.active_state.cam_dir, //.orientation.dirZ().negate(),
+                        position,
+                    ),
+                    else => @panic("switch"),
+                }) |new_position| {
+                    position = new_position;
+                }
+                p.rigid_transform.translation = position.sub(active.click_offset);
+            }
+        }
+
+        if (self.has_released) {
+            g.active = null;
+        }
+
+        const draw_interactions = [_]InteractionMode{
+            .Translate_x,
+            .Translate_y,
+            .Translate_z,
+            .Translate_yz,
+            .Translate_zx,
+            .Translate_xy,
+            .Translate_xyz,
+        };
+
+        const scaleMatrix = Mat4.scale(.{
+            .x = draw_scale,
+            .y = draw_scale,
+            .z = draw_scale,
+        });
+        const modelMatrix = p.matrix().mul(scaleMatrix);
+
+        for (draw_interactions) |i| {
+            if (get(i)) |c| {
+                try self.drawlist.append(.{
+                    .mesh = c,
+                    .matrix = modelMatrix,
+                    .hover = i == updated_state,
+                    .active = false,
+                });
+            }
+        }
+
+        _p.* = p;
     }
 
     fn plane_translation_dragger(self: @This(), active: *Drag, plane_normal: Vec3, point: Vec3) ?Vec3 {
@@ -832,7 +624,7 @@ pub const Context = struct {
             Vec3.one,
         );
         // Orientation is local by default
-        const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
+        const draw_scale = self.active_state.draw_scale(p);
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
 
@@ -842,19 +634,19 @@ pub const Context = struct {
         local_ray.descale(draw_scale);
         var best_t = std.math.inf(f32);
 
-        if (MeshComponent.rotate_x.mesh.intersect(local_ray)) |t| {
+        if (rotate_x.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_x;
                 best_t = t;
             }
         }
-        if (MeshComponent.rotate_y.mesh.intersect(local_ray)) |t| {
+        if (rotate_y.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_y;
                 best_t = t;
             }
         }
-        if (MeshComponent.rotate_z.mesh.intersect(local_ray)) |t| {
+        if (rotate_z.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Rotate_z;
                 best_t = t;
@@ -933,7 +725,7 @@ pub const Context = struct {
             // draw_interactions = { g.interaction_mode };
         } else {
             for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
-                if (MeshComponent.get(i)) |c| {
+                if (get(i)) |c| {
                     try self.drawlist.append(.{
                         .mesh = c,
                         .matrix = modelMatrix,
@@ -982,7 +774,7 @@ pub const Context = struct {
             _p.rigid_transform.rotation,
             Vec3.one,
         );
-        const draw_scale = if (self.active_state.screenspace_scale > 0.0) self.scale_screenspace(p.rigid_transform.translation, self.active_state.screenspace_scale) else 1.0;
+        const draw_scale = self.active_state.draw_scale(p);
         const id = hash_fnv1a(name);
         const g = self.get_or_add(id);
 
@@ -991,19 +783,19 @@ pub const Context = struct {
         local_ray.descale(draw_scale);
 
         var best_t = std.math.inf(f32);
-        if (MeshComponent.scale_x.mesh.intersect(local_ray)) |t| {
+        if (scale_x.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Scale_x;
                 best_t = t;
             }
         }
-        if (MeshComponent.scale_y.mesh.intersect(local_ray)) |t| {
+        if (scale_y.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Scale_y;
                 best_t = t;
             }
         }
-        if (MeshComponent.scale_z.mesh.intersect(local_ray)) |t| {
+        if (scale_z.mesh.intersect(local_ray)) |t| {
             if (t < best_t) {
                 updated_state = .Scale_z;
                 best_t = t;
@@ -1071,7 +863,7 @@ pub const Context = struct {
         const scaleMatrix = Mat4.scale_uniform(draw_scale);
         const modelMatrix = p.matrix().mul(scaleMatrix);
         for ([_]InteractionMode{ .Scale_x, .Scale_y, .Scale_z }) |i| {
-            if (MeshComponent.get(i)) |c| {
+            if (get(i)) |c| {
                 try self.drawlist.append(.{
                     .mesh = c,
                     .matrix = modelMatrix,
