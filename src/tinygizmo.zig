@@ -112,17 +112,65 @@ const Drag = struct {
     mode: InteractionMode = .None,
     // Offset from position of grabbed object to coordinates of clicked point
     click_offset: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-};
-
-const Interaction = struct {
-    // Flag to indicate if the gizmo is being hovered
-    hover: InteractionMode = .None,
     // Original position of an object being manipulated with a gizmo
     original_position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
     // Original orientation of an object being manipulated with a gizmo
     original_orientation: Quat = .{ .x = 0, .y = 0, .z = 0, .w = 1 },
     // Original scale of an object being manipulated with a gizmo
     original_scale: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
+
+    fn axis_rotation_dragger(
+        self: @This(),
+        mouse_left: bool,
+        snap_rotation: f32,
+        ray: Ray,
+        axis: Vec3,
+        start_orientation: Quat,
+    ) ?Quat {
+        if (!mouse_left) {
+            return null;
+        }
+        const original_pose = Transform.trs(self.original_position, start_orientation, Vec3.one);
+        const the_axis = original_pose.transform_vector(axis);
+        const the_plane = Vec4{
+            .x = the_axis.x,
+            .y = the_axis.y,
+            .z = the_axis.z,
+            .w = -the_axis.dot(self.click_offset),
+        };
+        const r = ray;
+
+        if (intersect_ray_plane(r, the_plane)) |t| {
+            const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.click_offset.sub(self.original_position))));
+            const arm1 = self.click_offset.sub(center_of_rotation).norm();
+            const arm2 = r.point(t).sub(center_of_rotation).norm();
+
+            const d = arm1.dot(arm2);
+            if (d > 0.999) {
+                return null;
+            }
+
+            const angle = std.math.acos(d);
+            if (angle < 0.001) {
+                return null;
+            }
+
+            if (snap_rotation > 0) {
+                const snapped = make_rotation_quat_between_vectors_snapped(arm1, arm2, snap_rotation);
+                return snapped.mul(start_orientation);
+            } else {
+                const a = arm1.cross(arm2).norm();
+                return Quat.axisAngle(a, angle).mul(start_orientation);
+            }
+        }
+
+        return null;
+    }
+};
+
+const Interaction = struct {
+    // Flag to indicate if the gizmo is being hovered
+    hover: InteractionMode = .None,
     // Currently active component
     active: ?Drag = null,
 };
@@ -254,9 +302,9 @@ fn compute_normals(vertices: []GeometryVertex, triangles: []const [3]u16) void {
         var v1 = vertices[idx1];
         var v2 = vertices[idx2];
         const n = v1.position.sub(v0.position).cross(v2.position.sub(v0.position));
-        v0.normal =v0.normal.add( n);
-        v1.normal =v1.normal.add( n);
-        v2.normal =v2.normal.add( n);
+        v0.normal = v0.normal.add(n);
+        v1.normal = v1.normal.add(n);
+        v2.normal = v2.normal.add(n);
     }
 
     for (0..vertices.len) |i| {
@@ -466,6 +514,34 @@ const MeshComponent = struct {
     }
 };
 
+fn intersect_ray_plane(ray: Ray, plane: Vec4) ?f32 {
+    const denom = (Vec3{ .x = plane.x, .y = plane.y, .z = plane.z }).dot(ray.direction);
+    if (@abs(denom) == 0) return null;
+    return -plane.dot(Vec4.fromVec3(ray.origin, 1)) / denom;
+}
+
+fn make_rotation_quat_between_vectors_snapped(
+    from: Vec3,
+    to: Vec3,
+    angle: f32,
+) Quat {
+    const a = from.norm();
+    const b = to.norm();
+    const snappedAcos = std.math.floor(std.math.acos(a.dot(b)) / angle) * angle;
+    return make_rotation_quat_axis_angle(a.cross(b).norm(), snappedAcos);
+}
+
+fn make_rotation_quat_axis_angle(axis: Vec3, angle: f32) Quat {
+    const s = std.math.sin(angle / 2);
+    const c = std.math.cos(angle / 2);
+    return .{
+        .x = axis.x * s,
+        .y = axis.y * s,
+        .z = axis.z * s,
+        .w = c,
+    };
+}
+
 pub const Context = struct {
     gizmos: std.AutoHashMap(u32, Interaction),
     active_state: ApplicationState = .{ .viewport_size = .{ .x = 0, .y = 0 } },
@@ -603,18 +679,18 @@ pub const Context = struct {
                 .{ .x = 0, .y = 0, .z = 1 },
             };
 
-            if (g.active) |active| {
+            if (g.active) |*active| {
                 if (self.active_state.mouse_left) {
                     var position = p.rigid_transform.translation.add(active.click_offset);
                     if (switch (active.mode) {
-                        .Translate_x => self.axis_translation_dragger(g, axes[0], position),
-                        .Translate_y => self.axis_translation_dragger(g, axes[1], position),
-                        .Translate_z => self.axis_translation_dragger(g, axes[2], position),
-                        .Translate_yz => self.plane_translation_dragger(g, axes[0], position),
-                        .Translate_zx => self.plane_translation_dragger(g, axes[1], position),
-                        .Translate_xy => self.plane_translation_dragger(g, axes[2], position),
+                        .Translate_x => self.axis_translation_dragger(active, axes[0], position),
+                        .Translate_y => self.axis_translation_dragger(active, axes[1], position),
+                        .Translate_z => self.axis_translation_dragger(active, axes[2], position),
+                        .Translate_yz => self.plane_translation_dragger(active, axes[0], position),
+                        .Translate_zx => self.plane_translation_dragger(active, axes[1], position),
+                        .Translate_xy => self.plane_translation_dragger(active, axes[2], position),
                         .Translate_xyz => self.plane_translation_dragger(
-                            g,
+                            active,
                             self.active_state.cam_dir, //.orientation.dirZ().negate(),
                             position,
                         ),
@@ -662,14 +738,14 @@ pub const Context = struct {
         }
     }
 
-    fn plane_translation_dragger(self: @This(), interaction: *Interaction, plane_normal: Vec3, point: Vec3) ?Vec3 {
+    fn plane_translation_dragger(self: @This(), active: *Drag, plane_normal: Vec3, point: Vec3) ?Vec3 {
         // Mouse clicked
         if (self.has_clicked) {
-            interaction.original_position = point;
+            active.original_position = point;
         }
 
         // Define the plane to contain the original position of the object
-        const plane_point = interaction.original_position;
+        const plane_point = active.original_position;
 
         // If an intersection exists between the ray and the plane, place the object at that point
         const denom = self.active_state.ray.direction.dot(plane_normal);
@@ -689,22 +765,22 @@ pub const Context = struct {
         return result;
     }
 
-    fn axis_translation_dragger(self: @This(), interaction: *Interaction, axis: Vec3, point: Vec3) ?Vec3 {
+    fn axis_translation_dragger(self: @This(), active: *Drag, axis: Vec3, point: Vec3) ?Vec3 {
         // First apply a plane translation dragger with a plane that contains the desired axis and is oriented to face the camera
         const plane_tangent = axis.cross(point.sub(self.active_state.ray.origin));
         const plane_normal = axis.cross(plane_tangent);
-        const new_point = self.plane_translation_dragger(interaction, plane_normal, point) orelse {
+        const new_point = self.plane_translation_dragger(active, plane_normal, point) orelse {
             return null;
         };
         // Constrain object motion to be along the desired axis
-        const delta = new_point.sub(interaction.original_position);
-        return interaction.original_position.add(axis.scale(delta.dot(axis)));
+        const delta = new_point.sub(active.original_position);
+        return active.original_position.add(axis.scale(delta.dot(axis)));
     }
 
     pub fn rotation(self: *@This(), name: []const u8, _p: *Transform) !void {
         std.debug.assert(_p.rigid_transform.rotation.length2() > 1e-6);
 
-        const p = Transform.trs(
+        var p = Transform.trs(
             _p.rigid_transform.translation,
             if (self.local_toggle) _p.rigid_transform.rotation else Quat.identity,
             Vec3.one,
@@ -742,25 +818,59 @@ pub const Context = struct {
         if (self.has_clicked) {
             g.active = null;
             if (updated_state != .None) {
-                //             transform(draw_scale, ray);
-                //             g.gizmos[id].original_position = center;
-                //             g.gizmos[id].original_orientation = orientation;
-                //             g.gizmos[id].click_offset = p.transform_point(ray.origin + ray.direction * t);
-                //             g.gizmos[id].active = true;
+                local_ray.scale(draw_scale);
+                g.active = .{
+                    .mode = updated_state,
+                    .original_position = _p.rigid_transform.translation,
+                    .original_orientation = _p.rigid_transform.rotation,
+                    .click_offset = local_ray.point(best_t),
+                };
             }
         }
 
-        // float3 activeAxis;
-        // if (g.gizmos[id].active)
-        // {
-        //     const float4 starting_orientation = g.local_toggle ? g.gizmos[id].original_orientation : float4(0, 0, 0, 1);
-        //     switch (g.gizmos[id].interaction_mode)
-        //     {
-        //     case interact::rotate_x: axis_rotation_dragger(id, g, { 1, 0, 0 }, center, starting_orientation, p.orientation); activeAxis = { 1, 0, 0 }; break;
-        //     case interact::rotate_y: axis_rotation_dragger(id, g, { 0, 1, 0 }, center, starting_orientation, p.orientation); activeAxis = { 0, 1, 0 }; break;
-        //     case interact::rotate_z: axis_rotation_dragger(id, g, { 0, 0, 1 }, center, starting_orientation, p.orientation); activeAxis = { 0, 0, 1 }; break;
-        //     }
-        // }
+        var activeAxis: Vec3 = undefined;
+        if (g.active) |*active| {
+            const starting_orientation = if (self.local_toggle) active.original_orientation else Quat.identity;
+            switch (active.mode) {
+                .Rotate_x => {
+                    if (active.axis_rotation_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_rotation,
+                        self.active_state.ray,
+                        RIGHT,
+                        starting_orientation,
+                    )) |rot| {
+                        p.rigid_transform.rotation = rot;
+                    }
+                    activeAxis = RIGHT;
+                },
+                .Rotate_y => {
+                    if (active.axis_rotation_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_rotation,
+                        self.active_state.ray,
+                        UP,
+                        starting_orientation,
+                    )) |rot| {
+                        p.rigid_transform.rotation = rot;
+                    }
+                    activeAxis = UP;
+                },
+                .Rotate_z => {
+                    if (active.axis_rotation_dragger(
+                        self.active_state.mouse_left,
+                        self.active_state.snap_rotation,
+                        self.active_state.ray,
+                        FORWARD,
+                        starting_orientation,
+                    )) |rot| {
+                        p.rigid_transform.rotation = rot;
+                    }
+                    activeAxis = FORWARD;
+                },
+                else => unreachable,
+            }
+        }
 
         if (self.has_released) {
             g.active = null;
@@ -773,23 +883,23 @@ pub const Context = struct {
         });
         const modelMatrix = p.matrix().mul(scaleMatrix);
 
-        // std::vector<interact> draw_interactions;
-        // if (!g.local_toggle && g.gizmos[id].interaction_mode != interact::none) draw_interactions = { g.gizmos[id].interaction_mode };
-        // else draw_interactions = { interact::rotate_x, interact::rotate_y, interact::rotate_z };
-
-        for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
-            if (MeshComponent.get(i)) |c| {
-                try self.drawlist.append(.{
-                    .mesh = c,
-                    .matrix = modelMatrix,
-                    .hover = i == updated_state,
-                    .active = false,
-                });
+        if (!self.local_toggle and g.active != null) {
+            // draw_interactions = { g.interaction_mode };
+        } else {
+            for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
+                if (MeshComponent.get(i)) |c| {
+                    try self.drawlist.append(.{
+                        .mesh = c,
+                        .matrix = modelMatrix,
+                        .hover = i == updated_state,
+                        .active = false,
+                    });
+                }
             }
         }
 
-        // // For non-local transformations, we only present one rotation ring
-        // // and draw an arrow from the center of the gizmo to indicate the degree of rotation
+        // For non-local transformations, we only present one rotation ring
+        // and draw an arrow from the center of the gizmo to indicate the degree of rotation
         // if (g.local_toggle == false && g.gizmos[id].interaction_mode != interact::none)
         // {
         //     interaction_state & interaction = g.gizmos[id];
@@ -816,6 +926,8 @@ pub const Context = struct {
         // }
         // else if (g.local_toggle == true && g.gizmos[id].interaction_mode != interact::none) orientation = p.orientation;
         //
+
+        _p.* = p;
     }
 
     pub fn scale(self: *@This(), name: []const u8, _p: *rowmath.Transform) !void {
