@@ -6,14 +6,14 @@ const sg = sokol.gfx;
 const simgui = sokol.imgui;
 // const scene = @import("cube_scene.zig");
 const scene = @import("teapot_scene.zig");
-const InputState = @import("input_state.zig");
 const rendertarget = @import("rendertarget.zig");
 const linegeom = @import("linegeom.zig");
 const tinygizmo = @import("tinygizmo");
 const rowmath = @import("rowmath");
 const Vec3 = rowmath.Vec3;
 const Vec2 = rowmath.Vec2;
-const Camera = @import("camera.zig").Camera;
+const Camera = rowmath.Camera;
+const InputState = rowmath.InputState;
 
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
@@ -220,7 +220,7 @@ export fn frame() void {
                 // grid
                 linegeom.grid();
 
-                scene.draw(state.offscreen.camera, .OffScreen);
+                scene.draw(.{ .camera = state.offscreen.camera, .useRenderTarget = true });
                 draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
             }
         }
@@ -236,7 +236,7 @@ export fn frame() void {
         // grid
         linegeom.grid();
 
-        scene.draw(state.display.camera, .Display);
+        scene.draw(.{.camera=state.display.camera});
         draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
         draw_gizmo(state.drawlist.items);
     }

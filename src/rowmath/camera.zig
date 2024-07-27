@@ -1,5 +1,5 @@
 const std = @import("std");
-const rowmath = @import("rowmath");
+const rowmath = @import("rowmath.zig");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
 const Quat = rowmath.Quat;
@@ -7,11 +7,6 @@ const Mat4 = rowmath.Mat4;
 const RigidTransform = rowmath.RigidTransform;
 const Ray = rowmath.Ray;
 const InputState = @import("input_state.zig");
-
-pub const RenderTarget = enum {
-    Display,
-    OffScreen,
-};
 
 pub const Frustum = struct {
     near_top_left: Vec3,
@@ -43,6 +38,10 @@ pub const Camera = struct {
         .z = 10,
     },
     transform: RigidTransform = .{},
+
+    pub fn viewProjectionMatrix(self: @This()) Mat4 {
+        return self.transform.worldToLocal().mul(self.projection);
+    }
 
     pub fn update_projection_matrix(self: *@This()) void {
         self.projection = Mat4.perspective(

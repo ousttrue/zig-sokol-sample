@@ -1,5 +1,4 @@
 const sokol = @import("sokol");
-const Camera = @import("camera.zig").Camera;
 
 pub fn grid() void {
     const n = 5.0;

@@ -35,7 +35,7 @@ pub fn build(b: *std.Build) void {
 
     // rowmath
     const rowmath = b.createModule(.{
-        .root_source_file = b.path("src/rowmath/rowmath.zig"),
+        .root_source_file = b.path("src/rowmath/main.zig"),
     });
     compile.root_module.addImport("rowmath", rowmath);
 

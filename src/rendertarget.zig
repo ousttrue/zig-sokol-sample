@@ -2,11 +2,11 @@ const builtin = @import("builtin");
 const sokol = @import("sokol");
 const sg = sokol.gfx;
 const simgui = sokol.imgui;
+const ig = @import("cimgui");
 const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
-const Camera = @import("camera.zig").Camera;
-const InputState = @import("input_state.zig");
-const ig = @import("cimgui");
+const Camera = rowmath.Camera;
+const InputState = rowmath.InputState;
 
 extern fn Custom_ButtonBehaviorMiddleRight() void;
 

@@ -6,11 +6,10 @@ const Mat4 = rowmath.Mat4;
 const Vec3 = rowmath.Vec3;
 const Quat = rowmath.Quat;
 const Transform = rowmath.Transform;
+const Camera = rowmath.Camera;
+const InputState = rowmath.InputState;
 const shd = @import("teapot.glsl.zig");
 const geometry = @import("teapot_geometry.zig");
-const InputState = @import("input_state.zig").InputState;
-const Camera = @import("camera.zig").Camera;
-const RenderTarget = @import("camera.zig").RenderTarget;
 
 pub const state = struct {
     var bind: sg.Bindings = .{};
@@ -66,22 +65,23 @@ fn mat4_to_array(m: *const Mat4) *const [16]f32 {
     return @ptrCast(m);
 }
 
-pub fn draw(camera: Camera, renderTarget: RenderTarget) void {
-    const viewProj = camera.transform.worldToLocal().mul(camera.projection);
+pub fn draw(options: struct { camera: Camera, useRenderTarget: bool = false }) void {
+    const viewProj = options.camera.viewProjectionMatrix();
 
     // teapot
-    switch (renderTarget) {
-        .Display => sg.applyPipeline(state.pip),
-        .OffScreen => sg.applyPipeline(state.offscreen_pip),
+    if (options.useRenderTarget) {
+        sg.applyPipeline(state.offscreen_pip);
+    } else {
+        sg.applyPipeline(state.pip);
     }
     sg.applyBindings(state.bind);
 
     const fsParams = shd.FsParams{
         .u_diffuse = .{ 1, 1, 1 },
         .u_eye = .{
-            camera.transform.translation.x,
-            camera.transform.translation.y,
-            camera.transform.translation.z,
+            options.camera.transform.translation.x,
+            options.camera.transform.translation.y,
+            options.camera.transform.translation.z,
         },
     };
 
