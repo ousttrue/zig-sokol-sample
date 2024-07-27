@@ -215,6 +215,47 @@ export fn init() void {
     state.drawlist = std.ArrayList(tinygizmo.Renderable).init(state.allocator);
 }
 
+const RenderTargetImageButtonContext = struct {
+    hover: bool,
+    target: RenderTarget,
+    input: InputState,
+};
+
+fn RenderTargetImageButton() ?RenderTargetImageButtonContext {
+    const io = ig.igGetIO();
+    var pos = ig.ImVec2{};
+    ig.igGetCursorScreenPos(&pos);
+    var size = ig.ImVec2{};
+    ig.igGetContentRegionAvail(&size);
+    const hover = is_contain(pos, size, io.*.MousePos);
+
+    if (size.x <= 0 or size.y <= 0) {
+        return null;
+    }
+
+    const rendertarget = get_or_create(@intFromFloat(size.x), @intFromFloat(size.y)) orelse {
+        return null;
+    };
+
+    ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_FramePadding, .{ .x = 0, .y = 0 });
+    defer ig.igPopStyleVar(1);
+    _ = ig.igImageButton(
+        "fbo",
+        simgui.imtextureid(rendertarget.image),
+        size,
+        .{ .x = 0, .y = if (builtin.os.tag == .emscripten) 1 else 0 },
+        .{ .x = 1, .y = if (builtin.os.tag == .emscripten) 0 else 1 },
+        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
+        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
+    );
+
+    return .{
+        .hover = hover,
+        .target = rendertarget,
+        .input = InputState.from_rendertarget(pos, size),
+    };
+}
+
 export fn frame() void {
     // call simgui.newFrame() before any ImGui calls
     simgui.newFrame(.{
@@ -261,42 +302,25 @@ export fn frame() void {
         ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
         defer ig.igPopStyleVar(1);
         var open_fbo = true;
-        if (ig.igBegin("fbo", &open_fbo, ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse)) {
-            ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_FramePadding, .{ .x = 0, .y = 0 });
-            defer ig.igPopStyleVar(1);
-            var pos = ig.ImVec2{};
-            ig.igGetCursorScreenPos(&pos);
-            var size = ig.ImVec2{};
-            ig.igGetContentRegionAvail(&size);
-            hover = is_contain(pos, size, io.MousePos);
+        if (ig.igBegin(
+            "fbo",
+            &open_fbo,
+            ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse,
+        )) {
+            if (RenderTargetImageButton()) |render_context| {
+                hover = render_context.hover;
+                Custom_ButtonBehaviorMiddleRight();
+                offscreen_cursor = state.offscreen.update(render_context.input);
 
-            if (size.x > 0 and size.y > 0) {
-                if (get_or_create(@intFromFloat(size.x), @intFromFloat(size.y))) |rendertarget| {
-                    _ = ig.igImageButton(
-                        "fbo",
-                        simgui.imtextureid(rendertarget.image),
-                        size,
-                        .{ .x = 0, .y = if (builtin.os.tag == .emscripten) 1 else 0 },
-                        .{ .x = 1, .y = if (builtin.os.tag == .emscripten) 0 else 1 },
-                        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-                        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-                    );
+                // render offscreen
+                state.offscreen.begin(render_context.target);
+                defer state.offscreen.end(render_context.target);
 
-                    Custom_ButtonBehaviorMiddleRight();
-                    offscreen_cursor = state.offscreen.update(InputState.from_rendertarget(pos, size));
+                // grid
+                linegeom.grid();
 
-                    {
-                        // render offscreen
-                        state.offscreen.begin(rendertarget);
-                        defer state.offscreen.end(rendertarget);
-
-                        // grid
-                        linegeom.grid();
-
-                        scene.draw(state.offscreen.camera, .OffScreen);
-                        draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
-                    }
-                }
+                scene.draw(state.offscreen.camera, .OffScreen);
+                draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
             }
         }
         ig.igEnd();
