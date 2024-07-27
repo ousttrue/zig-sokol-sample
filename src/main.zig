@@ -6,8 +6,8 @@ const sg = sokol.gfx;
 const simgui = sokol.imgui;
 // const scene = @import("cube_scene.zig");
 const scene = @import("teapot_scene.zig");
-const InputState = @import("input_state.zig").InputState;
-const RenderTarget = @import("rendertarget.zig").RenderTarget;
+const InputState = @import("input_state.zig");
+const rendertarget = @import("rendertarget.zig");
 const linegeom = @import("linegeom.zig");
 const tinygizmo = @import("tinygizmo");
 const rowmath = @import("rowmath");
@@ -17,7 +17,7 @@ const Camera = @import("camera.zig").Camera;
 
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
-    var display = RenderView{
+    var display = rendertarget.RenderView{
         .camera = .{
             .near_clip = 0.5,
             .far_clip = 15,
@@ -30,14 +30,13 @@ const state = struct {
             },
         },
     };
-    var offscreen = RenderView{
+    var offscreen = rendertarget.RenderView{
         .camera = .{
             .transform = .{
                 .translation = .{ .x = 0, .y = 1, .z = 15 },
             },
         },
     };
-    var rendertarget: ?RenderTarget = null;
     var gizmo_ctx: tinygizmo.Context = .{};
     var gizmo_a: tinygizmo.TranslationContext = .{};
     var gizmo_b: tinygizmo.RotationContext = .{};
@@ -48,10 +47,6 @@ const state = struct {
 fn draw_line(v0: Vec3, v1: Vec3) void {
     sokol.gl.v3f(v0.x, v0.y, v0.z);
     sokol.gl.v3f(v1.x, v1.y, v1.z);
-}
-
-fn is_contain(pos: ig.ImVec2, size: ig.ImVec2, p: ig.ImVec2) bool {
-    return (p.x >= pos.x and p.x <= (pos.x + size.x)) and (p.y >= pos.y and p.y <= (pos.y + size.y));
 }
 
 fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
@@ -114,74 +109,6 @@ fn draw_gizmo(drawlist: []const tinygizmo.Renderable) void {
     }
 }
 
-const RenderView = struct {
-    camera: Camera = Camera{},
-    pip: sg.Pipeline = .{},
-    pass_action: sg.PassAction = .{
-        .colors = .{
-            .{
-                // initial clear color
-                .load_action = .CLEAR,
-                .clear_value = .{ .r = 0.0, .g = 0.5, .b = 1.0, .a = 1.0 },
-            },
-            .{},
-            .{},
-            .{},
-        },
-    },
-    sgl_ctx: sokol.gl.Context = .{},
-
-    fn update(self: *@This(), input: InputState) Vec2 {
-        return self.camera.update(input);
-    }
-
-    fn begin(self: *@This(), _rendertarget: ?RenderTarget) void {
-        if (_rendertarget) |rendertarget| {
-            sg.beginPass(rendertarget.pass);
-            sokol.gl.setContext(self.sgl_ctx);
-        } else {
-            sg.beginPass(.{
-                .action = self.pass_action,
-                .swapchain = sokol.glue.swapchain(),
-            });
-            sokol.gl.setContext(sokol.gl.defaultContext());
-        }
-
-        sokol.gl.defaults();
-        sokol.gl.matrixModeProjection();
-        sokol.gl.multMatrix(&self.camera.projection.m[0]);
-        sokol.gl.matrixModeModelview();
-        sokol.gl.multMatrix(&self.camera.transform.worldToLocal().m[0]);
-    }
-
-    fn end(self: *@This(), _rendertarget: ?RenderTarget) void {
-        linegeom.grid();
-
-        if (_rendertarget) |_| {
-            sokol.gl.contextDraw(self.sgl_ctx);
-        } else {
-            sokol.gl.contextDraw(sokol.gl.defaultContext());
-            simgui.render();
-        }
-        sg.endPass();
-    }
-};
-
-extern fn Custom_ButtonBehaviorMiddleRight() void;
-
-pub fn get_or_create(width: i32, height: i32) ?RenderTarget {
-    if (state.rendertarget) |rendertarget| {
-        if (rendertarget.width == width and rendertarget.height == height) {
-            return rendertarget;
-        }
-        rendertarget.deinit();
-    }
-
-    const rendertarget = RenderTarget.init(width, height);
-    state.rendertarget = rendertarget;
-    return rendertarget;
-}
-
 export fn init() void {
     // state.allocator = std.heap.page_allocator;
     // wasm
@@ -215,45 +142,23 @@ export fn init() void {
     state.drawlist = std.ArrayList(tinygizmo.Renderable).init(state.allocator);
 }
 
-const RenderTargetImageButtonContext = struct {
-    hover: bool,
-    target: RenderTarget,
-    input: InputState,
-};
+pub fn input_from_imgui() InputState {
+    const io = ig.igGetIO().*;
+    var input = InputState{
+        .screen_width = io.DisplaySize.x,
+        .screen_height = io.DisplaySize.y,
+        .mouse_x = io.MousePos.x,
+        .mouse_y = io.MousePos.y,
+    };
 
-fn RenderTargetImageButton() ?RenderTargetImageButtonContext {
-    const io = ig.igGetIO();
-    var pos = ig.ImVec2{};
-    ig.igGetCursorScreenPos(&pos);
-    var size = ig.ImVec2{};
-    ig.igGetContentRegionAvail(&size);
-    const hover = is_contain(pos, size, io.*.MousePos);
-
-    if (size.x <= 0 or size.y <= 0) {
-        return null;
+    if (!io.WantCaptureMouse) {
+        input.mouse_left = io.MouseDown[ig.ImGuiMouseButton_Left];
+        input.mouse_right = io.MouseDown[ig.ImGuiMouseButton_Right];
+        input.mouse_middle = io.MouseDown[ig.ImGuiMouseButton_Middle];
+        input.mouse_wheel = io.MouseWheel;
     }
 
-    const rendertarget = get_or_create(@intFromFloat(size.x), @intFromFloat(size.y)) orelse {
-        return null;
-    };
-
-    ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_FramePadding, .{ .x = 0, .y = 0 });
-    defer ig.igPopStyleVar(1);
-    _ = ig.igImageButton(
-        "fbo",
-        simgui.imtextureid(rendertarget.image),
-        size,
-        .{ .x = 0, .y = if (builtin.os.tag == .emscripten) 1 else 0 },
-        .{ .x = 1, .y = if (builtin.os.tag == .emscripten) 0 else 1 },
-        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-        .{ .x = 1, .y = 1, .z = 1, .w = 1 },
-    );
-
-    return .{
-        .hover = hover,
-        .target = rendertarget,
-        .input = InputState.from_rendertarget(pos, size),
-    };
+    return input;
 }
 
 export fn frame() void {
@@ -264,7 +169,7 @@ export fn frame() void {
         .delta_time = sokol.app.frameDuration(),
         .dpi_scale = sokol.app.dpiScale(),
     });
-    const display_cursor = state.display.update(InputState.from_imgui());
+    const display_cursor = state.display.update(input_from_imgui());
     var offscreen_cursor: Vec2 = undefined;
 
     const io = ig.igGetIO().*;
@@ -307,14 +212,10 @@ export fn frame() void {
             &open_fbo,
             ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse,
         )) {
-            if (RenderTargetImageButton()) |render_context| {
+            if (state.offscreen.beginImageButton()) |render_context| {
+                defer state.offscreen.endImageButton();
                 hover = render_context.hover;
-                Custom_ButtonBehaviorMiddleRight();
-                offscreen_cursor = state.offscreen.update(render_context.input);
-
-                // render offscreen
-                state.offscreen.begin(render_context.target);
-                defer state.offscreen.end(render_context.target);
+                offscreen_cursor = render_context.cursor;
 
                 // grid
                 linegeom.grid();

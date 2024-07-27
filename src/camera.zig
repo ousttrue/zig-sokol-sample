@@ -6,7 +6,7 @@ const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 const RigidTransform = rowmath.RigidTransform;
 const Ray = rowmath.Ray;
-const InputState = @import("input_state.zig").InputState;
+const InputState = @import("input_state.zig");
 
 pub const RenderTarget = enum {
     Display,
