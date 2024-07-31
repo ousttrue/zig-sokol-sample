@@ -16,11 +16,32 @@ const sidebars: SidebarsConfig = {
 
   // But you can create a sidebar manually
   docsSidebar: [
-    // {
-    //   type: 'category',
-    //   label: 'Tutorial',
-    //   items: ['wasm/zig-sokol-sample'],
-    // },
+    {
+      type: 'category',
+      label: 'sokol-zig',
+      link: { type: 'doc', id: 'sokol/index' },
+      items: [
+        'sokol/sgl',
+      ],
+    },
+    {
+      type: 'category',
+      collapsed: false,
+      label: 'imgui',
+      // link: { type: 'doc', id: 'index' },
+      items: [
+        'imgui/dockspace',
+      ],
+    },
+    {
+      type: 'category',
+      collapsed: false,
+      label: 'wasm',
+      // link: { type: 'doc', id: 'index' },
+      items: [
+        'wasm/emscripten',
+      ],
+    },
   ],
 };
 

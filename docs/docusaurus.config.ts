@@ -33,9 +33,9 @@ const config: Config = {
     [
       'classic',
       {
-        // docs: {
-        //   sidebarPath: './sidebars.ts',
-        // },
+        docs: {
+          sidebarPath: './sidebars.ts',
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -53,12 +53,12 @@ const config: Config = {
       //   src: 'img/logo.svg',
       // },
       items: [
-        // {
-        //   type: 'docSidebar',
-        //   sidebarId: 'docsSidebar',
-        //   position: 'left',
-        //   label: 'Note',
-        // },
+        {
+          type: 'docSidebar',
+          sidebarId: 'docsSidebar',
+          position: 'left',
+          label: 'Note',
+        },
         {
           href: 'https://github.com/ousttrue/zig-sokol-sample',
           label: 'GitHub',
@@ -69,15 +69,15 @@ const config: Config = {
     footer: {
       style: 'dark',
       links: [
-        // {
-        //   title: 'Docs',
-        //   items: [
-        //     {
-        //       label: 'Note',
-        //       to: '/docs/',
-        //     },
-        //   ],
-        // },
+        {
+          title: 'Docs',
+          items: [
+            {
+              label: 'Note',
+              to: '/docs/',
+            },
+          ],
+        },
         {
           title: 'More',
           items: [
