@@ -123,7 +123,11 @@ fn show_demo(name: []const u8, p_open: *bool) void {
 }
 
 fn show_bgcolor(name: []const u8, p_open: *bool) void {
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+    ig.igSetNextWindowPos(
+        .{ .x = 100, .y = 10 },
+        ig.ImGuiCond_Once,
+        .{ .x = 0, .y = 0 },
+    );
     ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
     if (ig.igBegin(&name[0], p_open, ig.ImGuiWindowFlags_None)) {
         _ = ig.igColorEdit3(
@@ -136,7 +140,11 @@ fn show_bgcolor(name: []const u8, p_open: *bool) void {
 }
 
 fn show_subview(name: []const u8, p_open: *bool) void {
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 100 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+    ig.igSetNextWindowPos(
+        .{ .x = 10, .y = 30 },
+        ig.ImGuiCond_Once,
+        .{ .x = 0, .y = 0 },
+    );
     ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
     ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
     defer ig.igPopStyleVar(1);
@@ -191,13 +199,13 @@ export fn init() void {
     state.docks.append(dockspace.DockItem.make(
         "demo",
         &show_demo,
-    )) catch @panic("append demo");
+    ).show(false)) catch @panic("append demo");
 
     // bg color
     state.docks.append(dockspace.DockItem.make(
         "bg color",
         &show_bgcolor,
-    )) catch @panic("append bgcolor");
+    ).show(false)) catch @panic("append bgcolor");
 
     // sub view
     state.docks.append(dockspace.DockItem.make(

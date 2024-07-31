@@ -20,6 +20,12 @@ pub const DockItem = struct {
         };
     }
 
+    pub fn show(_self: @This(), is_open: bool) @This() {
+        var self = _self;
+        self.is_open = is_open;
+        return self;
+    }
+
     pub fn draw(self: *@This()) void {
         if (self.is_open) {
             self.draw_func(
