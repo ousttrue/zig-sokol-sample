@@ -14,6 +14,7 @@ const Vec3 = rowmath.Vec3;
 const Vec2 = rowmath.Vec2;
 const Camera = rowmath.Camera;
 const InputState = rowmath.InputState;
+const dockspace = @import("dockspace.zig");
 
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
@@ -119,10 +120,14 @@ export fn init() void {
         .environment = sokol.glue.environment(),
         .logger = .{ .func = sokol.log.func },
     });
+
     // initialize sokol-imgui
     simgui.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
+    const io = ig.igGetIO();
+    io.*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
+
     sokol.gl.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
@@ -191,6 +196,8 @@ export fn frame() void {
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
     //=== UI CODE STARTS HERE
+    dockspace.frame("ROOT_DOCK_SPACE");
+
     ig.igShowDemoWindow(null);
     {
         ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
