@@ -16,6 +16,7 @@ const sidebars: SidebarsConfig = {
 
   // But you can create a sidebar manually
   docsSidebar: [
+    'index',
     {
       type: 'category',
       label: 'sokol-zig',
