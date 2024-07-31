@@ -43,6 +43,11 @@ const state = struct {
     var gizmo_b: tinygizmo.RotationContext = .{};
     var gizmo_c: tinygizmo.ScalingContext = .{};
     var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
+
+    var docks: std.ArrayList(dockspace.DockItem) = undefined;
+    var hover = false;
+    var offscreen_cursor: Vec2 = .{ .x = 0, .y = 0 };
+    var display_cursor: Vec2 = .{ .x = 0, .y = 0 };
 };
 
 fn draw_line(v0: Vec3, v1: Vec3) void {
@@ -110,6 +115,60 @@ fn draw_gizmo(drawlist: []const tinygizmo.Renderable) void {
     }
 }
 
+fn show_demo(name: []const u8, p_open: *bool) void {
+    _ = name;
+    if (p_open.*) {
+        ig.igShowDemoWindow(p_open);
+    }
+}
+
+fn show_bgcolor(name: []const u8, p_open: *bool) void {
+    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+    ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
+    if (ig.igBegin(&name[0], p_open, ig.ImGuiWindowFlags_None)) {
+        _ = ig.igColorEdit3(
+            "Background",
+            &state.display.pass_action.colors[0].clear_value.r,
+            ig.ImGuiColorEditFlags_None,
+        );
+    }
+    ig.igEnd();
+}
+
+fn show_subview(name: []const u8, p_open: *bool) void {
+    ig.igSetNextWindowPos(.{ .x = 10, .y = 100 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+    ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
+    ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
+    defer ig.igPopStyleVar(1);
+    if (ig.igBegin(
+        &name[0],
+        p_open,
+        ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse,
+    )) {
+        if (state.offscreen.beginImageButton()) |render_context| {
+            defer state.offscreen.endImageButton();
+            state.hover = render_context.hover;
+            state.offscreen_cursor = render_context.cursor;
+
+            // grid
+            linegeom.grid();
+
+            scene.draw(.{
+                .camera = state.offscreen.camera,
+                .useRenderTarget = true,
+            });
+            draw_camera_frustum(
+                state.display.camera,
+                if (state.hover)
+                    null
+                else
+                    state.display_cursor,
+            );
+        }
+    }
+    ig.igEnd();
+}
+
 export fn init() void {
     // state.allocator = std.heap.page_allocator;
     // wasm
@@ -125,8 +184,26 @@ export fn init() void {
     simgui.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
-    const io = ig.igGetIO();
-    io.*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
+    dockspace.init();
+    state.docks = std.ArrayList(dockspace.DockItem).init(state.allocator);
+
+    // demo
+    state.docks.append(dockspace.DockItem.make(
+        "demo",
+        &show_demo,
+    )) catch @panic("append demo");
+
+    // bg color
+    state.docks.append(dockspace.DockItem.make(
+        "bg color",
+        &show_bgcolor,
+    )) catch @panic("append bgcolor");
+
+    // sub view
+    state.docks.append(dockspace.DockItem.make(
+        "debug view",
+        &show_subview,
+    )) catch @panic("append subview");
 
     sokol.gl.setup(.{
         .logger = .{ .func = sokol.log.func },
@@ -174,8 +251,7 @@ export fn frame() void {
         .delta_time = sokol.app.frameDuration(),
         .dpi_scale = sokol.app.dpiScale(),
     });
-    const display_cursor = state.display.update(input_from_imgui());
-    var offscreen_cursor: Vec2 = undefined;
+    state.display_cursor = state.display.update(input_from_imgui());
 
     const io = ig.igGetIO().*;
     if (!io.WantCaptureMouse) {
@@ -196,43 +272,7 @@ export fn frame() void {
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
     //=== UI CODE STARTS HERE
-    dockspace.frame("ROOT_DOCK_SPACE");
-
-    ig.igShowDemoWindow(null);
-    {
-        ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
-        ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
-        _ = ig.igBegin("Hello Dear ImGui!", 0, ig.ImGuiWindowFlags_None);
-        _ = ig.igColorEdit3("Background", &state.display.pass_action.colors[0].clear_value.r, ig.ImGuiColorEditFlags_None);
-        ig.igEnd();
-    }
-
-    var hover = false;
-    {
-        ig.igSetNextWindowPos(.{ .x = 10, .y = 100 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
-        ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
-        ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
-        defer ig.igPopStyleVar(1);
-        var open_fbo = true;
-        if (ig.igBegin(
-            "fbo",
-            &open_fbo,
-            ig.ImGuiWindowFlags_NoScrollbar | ig.ImGuiWindowFlags_NoScrollWithMouse,
-        )) {
-            if (state.offscreen.beginImageButton()) |render_context| {
-                defer state.offscreen.endImageButton();
-                hover = render_context.hover;
-                offscreen_cursor = render_context.cursor;
-
-                // grid
-                linegeom.grid();
-
-                scene.draw(.{ .camera = state.offscreen.camera, .useRenderTarget = true });
-                draw_camera_frustum(state.display.camera, if (hover) null else display_cursor);
-            }
-        }
-        ig.igEnd();
-    }
+    dockspace.frame("ROOT_DOCK_SPACE", state.docks.items);
     //=== UI CODE ENDS HERE
 
     {
@@ -243,8 +283,15 @@ export fn frame() void {
         // grid
         linegeom.grid();
 
-        scene.draw(.{.camera=state.display.camera});
-        draw_camera_frustum(state.offscreen.camera, if (hover) offscreen_cursor else null);
+        scene.draw(.{ .camera = state.display.camera });
+        const hover = true;
+        draw_camera_frustum(
+            state.offscreen.camera,
+            if (hover)
+                state.offscreen_cursor
+            else
+                null,
+        );
         draw_gizmo(state.drawlist.items);
     }
     sg.commit();

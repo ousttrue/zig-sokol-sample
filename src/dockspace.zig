@@ -1,25 +1,41 @@
 const ig = @import("cimgui");
 
-pub fn frame(name: []const u8) void {
-    if (ig.igBeginMainMenuBar()) {
-        //       if (ImGui.BeginMenu("Window"))
-        //       {
-        //           foreach (var dock in Docks)
-        //           {
-        // // Dockの表示状態と chekmark を連動
-        //               ImGui.MenuItem(dock.MenuLabel, dock.MenuShortCut, ref dock.IsOpen);
-        //           }
-        //           ImGui.EndMenu();
-        //       }
-        ig.igEndMainMenuBar();
+pub const DrawFunc = fn (
+    name: []const u8,
+    p_open: *bool,
+) void;
+
+pub const DockItem = struct {
+    name: []const u8,
+    is_open: bool = true,
+    draw_func: *const DrawFunc,
+
+    pub fn make(
+        name: []const u8,
+        draw_func: *const DrawFunc,
+    ) @This() {
+        return .{
+            .name = name,
+            .draw_func = draw_func,
+        };
     }
 
-    //    foreach (var dock in Docks)
-    //    {
-    // // dock の描画
-    //        dock.Draw();
-    //    }
+    pub fn draw(self: *@This()) void {
+        if (self.is_open) {
+            self.draw_func(
+                self.name,
+                &self.is_open,
+            );
+        }
+    }
+};
 
+pub fn init() void {
+    const io = ig.igGetIO();
+    io.*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
+}
+
+pub fn frame(name: []const u8, docks: []DockItem) void {
     const flags = (ig.ImGuiWindowFlags_MenuBar |
         ig.ImGuiWindowFlags_NoDocking |
         ig.ImGuiWindowFlags_NoBackground |
@@ -46,4 +62,21 @@ pub fn frame(name: []const u8) void {
     const dockspace_id = ig.igGetID_Str(&name[0]);
     _ = ig.igDockSpace(dockspace_id, .{ .x = 0, .y = 0 }, ig.ImGuiDockNodeFlags_PassthruCentralNode, null);
     ig.igEnd();
+
+    // draw docks
+    if (ig.igBeginMainMenuBar()) {
+        if (ig.igBeginMenu("Docks", true)) {
+            for (docks) |*dock| {
+                // Dockの表示状態と chekmark を連動
+                _ = ig.igMenuItem_BoolPtr(&dock.name[0], null, &dock.is_open, true);
+            }
+            ig.igEndMenu();
+        }
+        ig.igEndMainMenuBar();
+    }
+
+    for (docks) |*dock| {
+        // dock の描画
+        dock.draw();
+    }
 }
