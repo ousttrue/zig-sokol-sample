@@ -57,12 +57,12 @@ const config: Config = {
       //   src: 'img/logo.svg',
       // },
       items: [
-        {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Note',
-        },
+        // {
+        //   type: 'docSidebar',
+        //   sidebarId: 'docsSidebar',
+        //   position: 'left',
+        //   label: 'Note',
+        // },
         {
           href: 'https://github.com/ousttrue/zig-sokol-sample',
           label: 'GitHub',
