@@ -36,25 +36,66 @@ pub const DockItem = struct {
     }
 };
 
+const state = struct {
+    var firstCall = true;
+    var dockspace_id: ig.ImGuiID = undefined;
+};
+
 pub fn init() void {
     const io = ig.igGetIO();
     io.*.ConfigFlags |= ig.ImGuiConfigFlags_DockingEnable;
+    state.firstCall = true;
 }
 
-pub fn frame(name: []const u8, docks: []DockItem) void {
-    const flags = (ig.ImGuiWindowFlags_MenuBar |
-        ig.ImGuiWindowFlags_NoDocking |
-        ig.ImGuiWindowFlags_NoBackground |
-        ig.ImGuiWindowFlags_NoTitleBar |
-        ig.ImGuiWindowFlags_NoCollapse |
-        ig.ImGuiWindowFlags_NoResize |
-        ig.ImGuiWindowFlags_NoMove |
-        ig.ImGuiWindowFlags_NoBringToFrontOnFocus |
-        ig.ImGuiWindowFlags_NoNavFocus);
+const WINDOW_FLAG = (ig.ImGuiWindowFlags_MenuBar |
+    ig.ImGuiWindowFlags_NoDocking |
+    ig.ImGuiWindowFlags_NoBackground |
+    ig.ImGuiWindowFlags_NoTitleBar |
+    ig.ImGuiWindowFlags_NoCollapse |
+    ig.ImGuiWindowFlags_NoResize |
+    ig.ImGuiWindowFlags_NoMove |
+    ig.ImGuiWindowFlags_NoBringToFrontOnFocus |
+    ig.ImGuiWindowFlags_NoNavFocus);
 
+const DOCKNODE_FLAG = (ig.ImGuiDockNodeFlags_NoCloseButton |
+    ig.ImGuiDockNodeFlags_NoWindowMenuButton |
+    ig.ImGuiDockNodeFlags_NoDocking |
+    ig.ImGuiDockNodeFlags_NoDockingSplit |
+    ig.ImGuiDockNodeFlags_NoTabBar);
+
+pub fn frame(dockspace_name: []const u8, docks: []DockItem) void {
     const viewport = ig.igGetMainViewport();
     const pos = viewport.*.Pos;
     const size = viewport.*.Size;
+
+    if (state.firstCall) {
+        state.dockspace_id = ig.igGetID_Str(&dockspace_name[0]);
+        state.firstCall = false;
+        ig.igDockBuilderRemoveNode(state.dockspace_id); // Clear out existing layout
+        _ = ig.igDockBuilderAddNode(state.dockspace_id, DOCKNODE_FLAG); // Add empty node
+        ig.igDockBuilderSetNodeSize(state.dockspace_id, size); // Add empty node
+
+        // build dock tree node
+
+        //     ImGuiID dock_main_id = ImGui::GetID("main);
+        //     ImGuiID rightUp = ImGui::GetID("rightUp");
+        //     ImGuiID rightDown = ImGui::GetID("rightDown");
+        //     ImGuiID leftUp = ImGui::GetID("leftUp");
+        //     ImGuiID right;
+        //     ImGuiID leftUp;
+        //     ImGuiID leftDown;
+        //
+        //     ImGui::DockBuilderSplitNode(dock_main_id, ImGuiDir_Right, 0.4f, &right, &left);
+        //
+        //     ImGui::DockBuilderSplitNode(right, ImGuiDir_Down, 0.30f, &rightDown, &rightUp);
+        //     ImGui::DockBuilderSplitNode(left, ImGuiDir_Down, 0.30f, &leftDown, &leftUp);
+        //     ImGui::DockBuilderDockWindow("rightUp", rightUp);
+        //     ImGui::DockBuilderDockWindow("leftUp", leftUp);
+        //     ImGui::DockBuilderDockWindow("rightDown", rightDown);
+        //
+        //     ImGui::DockBuilderFinish(dock_main_id);
+    }
+
     ig.igSetNextWindowPos(pos, 0, .{ .x = 0, .y = 0 });
     ig.igSetNextWindowSize(size, 0);
     ig.igSetNextWindowViewport(viewport.*.ID);
@@ -63,10 +104,9 @@ pub fn frame(name: []const u8, docks: []DockItem) void {
     ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
 
     // DockSpace
-    _ = ig.igBegin(&name[0], null, flags);
+    _ = ig.igBegin(&dockspace_name[0], null, WINDOW_FLAG);
     ig.igPopStyleVar(3);
-    const dockspace_id = ig.igGetID_Str(&name[0]);
-    _ = ig.igDockSpace(dockspace_id, .{ .x = 0, .y = 0 }, ig.ImGuiDockNodeFlags_PassthruCentralNode, null);
+    _ = ig.igDockSpace(state.dockspace_id, .{ .x = 0, .y = 0 }, ig.ImGuiDockNodeFlags_PassthruCentralNode, null);
     ig.igEnd();
 
     // draw docks
