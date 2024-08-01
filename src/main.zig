@@ -175,6 +175,8 @@ fn show_subview(name: []const u8, p_open: *bool) void {
                 else
                     state.display_cursor,
             );
+
+            draw_gizmo(state.drawlist.items);
         }
     }
     ig.igEnd();
