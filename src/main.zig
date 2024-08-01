@@ -16,6 +16,8 @@ const Camera = rowmath.Camera;
 const InputState = rowmath.InputState;
 const dockspace = @import("dockspace.zig");
 
+const ROOT_DOCK_SPACE = "ROOT_DOCK_SPACE";
+
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
     var display = rendertarget.RenderView{
@@ -44,7 +46,8 @@ const state = struct {
     var gizmo_c: tinygizmo.ScalingContext = .{};
     var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
 
-    var docks: std.ArrayList(dockspace.DockItem) = undefined;
+    // var docks: std.ArrayList(dockspace.DockItem) = undefined;
+    var root_dock_node: *dockspace.DockNode = undefined;
     var hover = false;
     var offscreen_cursor: Vec2 = .{ .x = 0, .y = 0 };
     var display_cursor: Vec2 = .{ .x = 0, .y = 0 };
@@ -140,11 +143,11 @@ fn show_bgcolor(name: []const u8, p_open: *bool) void {
 }
 
 fn show_subview(name: []const u8, p_open: *bool) void {
-    ig.igSetNextWindowPos(
-        .{ .x = 10, .y = 30 },
-        ig.ImGuiCond_Once,
-        .{ .x = 0, .y = 0 },
-    );
+    // ig.igSetNextWindowPos(
+    //     .{ .x = 10, .y = 30 },
+    //     ig.ImGuiCond_Once,
+    //     .{ .x = 0, .y = 0 },
+    // );
     ig.igSetNextWindowSize(.{ .x = 256, .y = 256 }, ig.ImGuiCond_Once);
     ig.igPushStyleVar_Vec2(ig.ImGuiStyleVar_WindowPadding, .{ .x = 0, .y = 0 });
     defer ig.igPopStyleVar(1);
@@ -193,25 +196,40 @@ export fn init() void {
         .logger = .{ .func = sokol.log.func },
     });
     dockspace.init();
-    state.docks = std.ArrayList(dockspace.DockItem).init(state.allocator);
+    // state.docks = std.ArrayList(dockspace.DockItem).init(state.allocator);
 
     // demo
-    state.docks.append(dockspace.DockItem.make(
-        "demo",
-        &show_demo,
-    ).show(false)) catch @panic("append demo");
+    // state.docks.append(dockspace.DockItem.make(
+    //     "demo",
+    //     &show_demo,
+    // ).show(false)) catch @panic("append demo");
+    //
+    // // bg color
+    // state.docks.append(dockspace.DockItem.make(
+    //     "bg color",
+    //     &show_bgcolor,
+    // ).show(false)) catch @panic("append bgcolor");
 
-    // bg color
-    state.docks.append(dockspace.DockItem.make(
-        "bg color",
-        &show_bgcolor,
-    ).show(false)) catch @panic("append bgcolor");
+    {
+        // sub view
+        state.root_dock_node = dockspace.DockNode.make_empty(
+            state.allocator,
+            ROOT_DOCK_SPACE,
+        ) catch unreachable;
 
-    // sub view
-    state.docks.append(dockspace.DockItem.make(
-        "debug view",
-        &show_subview,
-    )) catch @panic("append subview");
+        const left = dockspace.DockNode.make(
+            state.allocator,
+            "debug view",
+            &show_subview,
+        ) catch @panic("DockNode [debug view]");
+
+        const right = dockspace.DockNode.make_empty(
+            state.allocator,
+            "empty right",
+        ) catch unreachable;
+
+        state.root_dock_node.split(.Horizontal, left, right);
+    }
 
     sokol.gl.setup(.{
         .logger = .{ .func = sokol.log.func },
@@ -280,7 +298,7 @@ export fn frame() void {
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image
     //=== UI CODE STARTS HERE
-    dockspace.frame("ROOT_DOCK_SPACE", state.docks.items);
+    dockspace.frame(ROOT_DOCK_SPACE, state.root_dock_node);
     //=== UI CODE ENDS HERE
 
     {
