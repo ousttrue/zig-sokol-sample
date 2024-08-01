@@ -34,6 +34,22 @@ pub const Vec3 = extern struct {
     y: f32,
     z: f32,
 
+    pub fn format(
+        self: @This(),
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+
+        try writer.print("{{{d:.2},{d:.2},{d:.2}}}", .{
+            self.x,
+            self.y,
+            self.z,
+        });
+    }
+
     pub const ONE = Vec3{ .x = 1, .y = 1, .z = 1 };
     pub const ZERO = Vec3{ .x = 0.0, .y = 0.0, .z = 0.0 };
     pub const RIGHT: Vec3 = .{ .x = 1, .y = 0, .z = 0 };
