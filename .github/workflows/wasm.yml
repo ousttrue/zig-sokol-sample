@@ -40,7 +40,7 @@ jobs:
           mkdir -p docs/static/wasm
           cp zig-out/web/* docs/static/wasm/
           zig build docs --summary all -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
-          cp zig-out/doc/* docs/static/wasm/
+          cp zig-out/docs/* docs/static/wasm/
       # docusaurus
       - uses: actions/setup-node@v3
         with:
