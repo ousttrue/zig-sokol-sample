@@ -169,11 +169,12 @@ fn flush_to_zero(f: Vec3) Vec3 {
 const Drag = struct {
     component: InteractionMode,
     // Offset from position of grabbed object to coordinates of clicked point
-    click_offset: Vec3,
+    local_click: Vec3,
     // Original position of an object being manipulated with a gizmo
     original_position: Vec3,
     // Original orientation of an object being manipulated with a gizmo
     original_orientation: Quat,
+    active_axis: Vec3,
 
     fn axis_rotation_dragger(
         self: @This(),
@@ -196,12 +197,12 @@ const Drag = struct {
             .x = the_axis.x,
             .y = the_axis.y,
             .z = the_axis.z,
-            .w = -the_axis.dot(self.click_offset),
+            .w = -the_axis.dot(self.local_click),
         };
 
         if (intersect_ray_plane(r, the_plane)) |t| {
-            const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.click_offset.sub(self.original_position))));
-            const arm1 = self.click_offset.sub(center_of_rotation).norm();
+            const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.local_click.sub(self.original_position))));
+            const arm1 = self.local_click.sub(center_of_rotation).norm();
             const arm2 = r.point(t).sub(center_of_rotation).norm();
 
             const d = arm1.dot(arm2);
@@ -259,7 +260,7 @@ pub const RotationContext = struct {
     // Flag to indicate if the gizmo is being hovered
     hover: ?InteractionMode = null,
     // Currently active component
-    active: ?Drag = null,
+    drag: ?Drag = null,
 
     pub fn rotation(
         self: *@This(),
@@ -275,71 +276,71 @@ pub const RotationContext = struct {
             if (local_toggle) _p.rigid_transform.rotation else Quat.IDENTITY,
             Vec3.ONE,
         );
-        // Orientation is local by default
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);
         const _component, const best_t = rotation_intersect(
             local_ray.descale(draw_scale),
         );
         if (ctx.has_clicked) {
-            self.active = null;
+            self.drag = null;
             if (_component) |component| {
-                self.active = .{
+                var scale_local_ray = ctx.active_state.ray;
+                scale_local_ray.scale(draw_scale);
+                const local_click = scale_local_ray.point(best_t);
+                std.debug.print("{}\n", .{local_click});
+                self.drag = .{
                     .component = component,
                     .original_position = _p.rigid_transform.translation,
                     .original_orientation = _p.rigid_transform.rotation,
-                    .click_offset = local_ray.point(best_t),
+                    .local_click = local_click,
+                    .active_axis = switch (component) {
+                        .Rotate_x => Vec3.RIGHT,
+                        .Rotate_y => Vec3.UP,
+                        .Rotate_z => Vec3.FORWARD,
+                    },
                 };
             }
         }
 
-        var activeAxis: Vec3 = undefined;
-        if (self.active) |*active| {
-            const starting_orientation = if (local_toggle)
-                active.original_orientation
-            else
-                Quat.IDENTITY;
-            switch (active.component) {
+        if (self.drag) |*drag| {
+            switch (drag.component) {
                 .Rotate_x => {
-                    if (active.axis_rotation_dragger(
+                    if (drag.axis_rotation_dragger(
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
                         Vec3.RIGHT,
-                        starting_orientation,
+                        drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = Vec3.RIGHT;
                 },
                 .Rotate_y => {
-                    if (active.axis_rotation_dragger(
+                    if (drag.axis_rotation_dragger(
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
                         Vec3.UP,
-                        starting_orientation,
+                        drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = Vec3.UP;
                 },
                 .Rotate_z => {
-                    if (active.axis_rotation_dragger(
+                    if (drag.axis_rotation_dragger(
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
                         Vec3.FORWARD,
-                        starting_orientation,
+                        drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
                     }
-                    activeAxis = Vec3.FORWARD;
                 },
             }
         }
 
         if (ctx.has_released) {
-            self.active = null;
+            self.drag = null;
         }
 
         const scaleMatrix = Mat4.scale(.{
@@ -349,7 +350,7 @@ pub const RotationContext = struct {
         });
         const modelMatrix = p.matrix().mul(scaleMatrix);
 
-        // if (!local_toggle and self.active != null) {
+        // if (!local_toggle and self.drag != null) {
         //     // draw_interactions = { g.interaction_mode };
         // } else {
         for ([_]InteractionMode{ .Rotate_x, .Rotate_y, .Rotate_z }) |i| {
@@ -372,7 +373,7 @@ pub const RotationContext = struct {
         //     interaction_state & interaction = g.gizmos[id];
         //
         //     // Create orthonormal basis for drawing the arrow
-        //     float3 a = qrot(p.orientation, interaction.click_offset - interaction.original_position);
+        //     float3 a = qrot(p.orientation, interaction.local_click - interaction.original_position);
         //     float3 zDir = normalize(activeAxis), xDir = normalize(cross(a, zDir)), yDir = cross(zDir, xDir);
         //
         //     // Ad-hoc geometry
@@ -394,6 +395,8 @@ pub const RotationContext = struct {
         // else if (g.local_toggle == true && g.gizmos[id].interaction_mode != interact::none) orientation = p.orientation;
         //
 
-        _p.* = p;
+        if (ctx.active_state.mouse_left) {
+            _p.* = p;
+        }
     }
 };

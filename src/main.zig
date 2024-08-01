@@ -290,10 +290,25 @@ export fn frame() void {
         });
 
         state.drawlist.clearRetainingCapacity();
-        state.gizmo_a.translation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_a) catch @panic("transform a");
-        state.gizmo_b.rotation(state.gizmo_ctx, &state.drawlist, false, &scene.state.xform_b) catch @panic("transform b");
+        state.gizmo_a.translation(
+            state.gizmo_ctx,
+            &state.drawlist,
+            false,
+            &scene.state.xform_a,
+        ) catch @panic("transform a");
+        state.gizmo_b.rotation(
+            state.gizmo_ctx,
+            &state.drawlist,
+            true,
+            &scene.state.xform_b,
+        ) catch @panic("transform b");
         const uniform = false;
-        state.gizmo_c.scale(state.gizmo_ctx, &state.drawlist, &scene.state.xform_c, uniform) catch @panic("transform b");
+        state.gizmo_c.scale(
+            state.gizmo_ctx,
+            &state.drawlist,
+            &scene.state.xform_c,
+            uniform,
+        ) catch @panic("transform b");
     }
 
     // the offscreen pass, rendering an rotating, untextured donut into a render target image

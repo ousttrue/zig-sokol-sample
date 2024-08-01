@@ -9,6 +9,6 @@ sokol の zig binding を練習する。
 
 - https://github.com/floooh/sokol-zig-imgui-sample/
 
-## TODO
+## PORT
 
-- port https://github.com/ddiakopoulos/tinygizmo
+- [x] https://github.com/ddiakopoulos/tinygizmo
