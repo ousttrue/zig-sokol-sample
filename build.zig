@@ -79,16 +79,6 @@ pub fn build(b: *std.Build) void {
     } else {
         compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
 
-        // docs
-        const docs_step = b.step("docs", "Emit docs");
-        const docs_install = b.addInstallDirectory(.{
-            // .source_dir = dep_sokol.artifact("sokol").getEmittedDocs(),
-            .source_dir = compile.getEmittedDocs(),
-            .install_dir = .prefix,
-            .install_subdir = "docs", // location
-        });
-        docs_step.dependOn(&docs_install.step);
-
         //
         // test
         //
@@ -101,6 +91,16 @@ pub fn build(b: *std.Build) void {
         unit_tests.root_module.addImport("sokol", dep_sokol.module("sokol"));
         unit_tests.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     }
+
+    // docs
+    const docs_step = b.step("docs", "Emit docs");
+    const docs_install = b.addInstallDirectory(.{
+        // .source_dir = dep_sokol.artifact("sokol").getEmittedDocs(),
+        .source_dir = compile.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs", // location
+    });
+    docs_step.dependOn(&docs_install.step);
 }
 
 fn buildWeb(
