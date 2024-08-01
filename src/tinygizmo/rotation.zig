@@ -272,7 +272,7 @@ pub const RotationContext = struct {
 
         var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            if (local_toggle) _p.rigid_transform.rotation else Quat.IDENTITY,
             Vec3.ONE,
         );
         // Orientation is local by default
@@ -294,7 +294,10 @@ pub const RotationContext = struct {
 
         var activeAxis: Vec3 = undefined;
         if (self.active) |*active| {
-            const starting_orientation = if (local_toggle) active.original_orientation else Quat.identity;
+            const starting_orientation = if (local_toggle)
+                active.original_orientation
+            else
+                Quat.IDENTITY;
             switch (active.component) {
                 .Rotate_x => {
                     if (active.axis_rotation_dragger(

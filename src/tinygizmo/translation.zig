@@ -244,7 +244,7 @@ pub const TranslationContext = struct {
     ) !void {
         var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            if (local_toggle) _p.rigid_transform.rotation else Quat.IDENTITY,
             Vec3.ONE,
         );
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);

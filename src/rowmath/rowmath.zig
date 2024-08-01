@@ -448,7 +448,7 @@ pub const Quat = struct {
     z: f32,
     w: f32,
 
-    pub const identity: Quat = .{
+    pub const IDENTITY: Quat = .{
         .x = 0,
         .y = 0,
         .z = 0,
@@ -537,7 +537,7 @@ pub const Quat = struct {
 };
 
 pub const RigidTransform = struct {
-    rotation: Quat = Quat.identity,
+    rotation: Quat = Quat.IDENTITY,
     translation: Vec3 = Vec3.ZERO,
 
     pub fn localToWorld(self: @This()) Mat4 {
