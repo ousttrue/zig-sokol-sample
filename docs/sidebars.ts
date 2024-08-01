@@ -19,6 +19,7 @@ const sidebars: SidebarsConfig = {
     'index',
     {
       type: 'category',
+      collapsed: false,
       label: 'sokol-zig',
       link: { type: 'doc', id: 'sokol/index' },
       items: [

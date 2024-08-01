@@ -53,12 +53,8 @@ exe.root_module.addImport("sokol", dep_sokol.module("sokol"));
 4. `src/main.zig` で sokol を使う
 
 ```zig
-//------------------------------------------------------------------------------
-//  clear-sapp.c
-//------------------------------------------------------------------------------
 const sokol = @import("sokol");
 const sg = sokol.gfx;
-const dbgui = @import("dbgui");
 
 var pass_action = sg.PassAction{};
 
@@ -71,7 +67,6 @@ export fn init() void {
         .load_action = .CLEAR,
         .clear_value = .{ .r = 1.0, .g = 0.0, .b = 0.0, .a = 1.0 },
     };
-    dbgui.setup(sokol.app.sampleCount());
 }
 
 export fn frame() void {
@@ -81,13 +76,11 @@ export fn frame() void {
         .action = pass_action,
         .swapchain = sokol.glue.swapchain(),
     });
-    dbgui.draw();
     sg.endPass();
     sg.commit();
 }
 
 export fn cleanup() void {
-    dbgui.shutdown();
     sg.shutdown();
 }
 
@@ -105,6 +98,7 @@ pub fn main() void {
     });
 }
 ```
+
 5. `zig build run`
 
   </p>
