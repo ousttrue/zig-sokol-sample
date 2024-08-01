@@ -1,5 +1,9 @@
 # sgl
 
-<a href="/wasm/index.html#sokol.gl">sgl</a>
+<Link
+  target="_blank"
+  to="/wasm/index.html#sokol.gl">
+  sgl
+</Link>
 
 ## depth test
