@@ -23,6 +23,7 @@ const sidebars: SidebarsConfig = {
       label: 'sokol-zig',
       link: { type: 'doc', id: 'sokol/index' },
       items: [
+        'sokol/build',
         'sokol/sgl',
       ],
     },
