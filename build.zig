@@ -78,6 +78,7 @@ pub fn build(b: *std.Build) void {
         dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
     } else {
         compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
+        compile.step.dependOn(buildShader(b, target, "src/cube.glsl"));
 
         //
         // test
@@ -148,22 +149,17 @@ fn buildShader(
     target: std.Build.ResolvedTarget,
     comptime shader: []const u8,
 ) *std.Build.Step {
-    const sokol_tools_bin_dir = "../../floooh/sokol-tools-bin/bin/";
-    const optional_shdc: ?[:0]const u8 = comptime switch (builtin.os.tag) {
+    const optional_shdc = comptime switch (builtin.os.tag) {
         .windows => "win32/sokol-shdc.exe",
         .linux => "linux/sokol-shdc",
         .macos => if (builtin.cpu.arch.isX86()) "osx/sokol-shdc" else "osx_arm64/sokol-shdc",
-        else => null,
+        else => @panic("unsupported host platform, skipping shader compiler step"),
     };
-    if (optional_shdc == null) {
-        std.log.warn("unsupported host platform, skipping shader compiler step", .{});
-        return;
-    }
-    const shdc_path = sokol_tools_bin_dir ++ optional_shdc.?;
-    const shdc_step = b.step("shaders", "Compile shaders (needs ../../floooh/sokol-tools-bin)");
+    const tools = b.dependency("sokol-tools-bin", .{});
+    const shdc_path = tools.path(b.pathJoin(&.{ "bin", optional_shdc })).getPath(b);
     const glsl = if (target.result.isDarwin()) "glsl410" else "glsl430";
     const slang = glsl ++ ":metal_macos:hlsl5:glsl300es:wgsl";
-    const cmd = b.addSystemCommand(&.{
+    return &b.addSystemCommand(&.{
         shdc_path,
         "-i",
         shader,
@@ -173,10 +169,5 @@ fn buildShader(
         slang,
         "-f",
         "sokol_zig",
-    });
-    shdc_step.dependOn(&cmd.step);
-
-    b.step("shader", "gen shader").dependOn(shdc_step);
-
-    return shdc_step;
+    }).step;
 }

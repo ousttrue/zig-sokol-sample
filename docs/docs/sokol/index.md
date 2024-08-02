@@ -6,24 +6,6 @@
 :::note sokol は OpenGL などの Graphics API の薄いラッパーです
 :::
 
-## sokol はビルドに shader 変換が必要問題
-
-sokol は stb のような `header only` なので
-組み込むのが簡単なのだけど、
-
-shader を専用ツールで前処理して `C` のヘッダー化するという工程がある。
-これをビルドシステムに組み込む必要があった。
-
-:::note 前処理された Shader は、
-VertexLayout や Uniform 変数に型付きでアクセスできるので便利。
-事前に reflection されている感じになる。
-:::
-
-:::note sokol 専用ぽいビルドツール [fips](https://github.com/floooh/fips) もあります。
-:::
-
-`sokok-zig` は`build.zig` 内で [sokol-tools-bin](https://github.com/floooh/sokol-tools-bin) を呼び出してくれるので、`shader` 変換問題が解決していた。
-
 ## zig は便利な OpenGL バインディングが無い問題
 
 zig は、 `cImport` で `glfw` と `OpenGL` を直接使えるのだけど、
