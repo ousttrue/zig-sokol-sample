@@ -29,6 +29,9 @@ pub fn build(b: *std.Build) void {
     else
         buildNative(b, target, optimize);
 
+    compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
+    compile.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+
     compile.root_module.addImport("sokol", dep_sokol.module("sokol"));
     compile.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
     b.installArtifact(compile);
@@ -77,9 +80,6 @@ pub fn build(b: *std.Build) void {
         // Emscripten SDK setup step)
         dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
     } else {
-        compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
-        compile.step.dependOn(buildShader(b, target, "src/cube.glsl"));
-
         //
         // test
         //
