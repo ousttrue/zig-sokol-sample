@@ -9,6 +9,9 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const rowmath_dep = b.dependency("rowmath", .{});
+    const rowmath = rowmath_dep.module("rowmath");
+
     const dep_sokol = b.dependency("sokol", .{
         .target = target,
         .optimize = optimize,
@@ -37,9 +40,6 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(compile);
 
     // rowmath
-    const rowmath = b.createModule(.{
-        .root_source_file = b.path("src/rowmath/main.zig"),
-    });
     compile.root_module.addImport("rowmath", rowmath);
 
     // tinygizmo

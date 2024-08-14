@@ -34,6 +34,10 @@
             .url = "git+https://github.com/floooh/sokol-tools-bin.git#8cc8c257380c9a5e230a84aeebf09cd500903fbc",
             .hash = "12200f5129c997728160ab584adcc939b9dbca6f802d7273f386dad777de85e80421",
         },
+        .rowmath = .{
+            .url = "git+https://github.com/ousttrue/rowmath.git#8eab5512b531b7327d53c75841ecc025fb012cfd",
+            .hash = "12201a9ec3c72a2afe0713586202fb2cee89df23bc566ce8de45091d1e45268e185b",
+        },
     },
     .paths = .{
         "build.zig",
