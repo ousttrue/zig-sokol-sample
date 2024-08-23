@@ -42,6 +42,46 @@
 
 stack に大きい配列を置いたりするとクラッシュ。
 
+### c++
+
+```
+/zig/0.13.0/files/lib/libcxx/include/stdlib.h:145:30: error: unknown type name 'ldiv_t'
+inline _LIBCPP_HIDE_FROM_ABI ldiv_t div(long __x, long __y) _NOEXCEPT { return ::ldiv(__x, __y); }
+```
+
+```
+/zig/0.13.0/files/lib/libcxx/include/cstddef:46:5: error: <cstddef> tried including <stddef.h> but didn't find libc++'s <stddef.h> header.
+This usually means that your header search paths are not configured properly.
+The header search paths should contain the C++ Standard Library headers before any C Standard Library, and you are probably using compiler flags that make that not be the case.
+# error <cstddef> tried including <stddef.h> but didn't find libc++'s <stddef.h> header.
+```
+
+```
+/zig/p/12200ba39d83227f5de08287b043b011a2eb855cdb077f4b165edce30564ba73400e/upstream/emscripten/cache/sysroot/include/c++/v1/__config_site:3:9: error: '_LIBCPP_ABI_VERSION' macro redefined
+#define _LIBCPP_ABI_VERSION 2
+```
+
+```zig
+const emsdk_incl_path = dep_emsdk.path(
+    "upstream/emscripten/cache/sysroot/include",
+);
+const emsdk_cpp_incl_path = dep_emsdk.path(
+    "upstream/emscripten/cache/sysroot/include/c++/v1",
+);
+lib.addSystemIncludePath(emsdk_incl_path);
+lib.addSystemIncludePath(emsdk_cpp_incl_path);
+```
+
+コンパイルは通った。
+
+https://emscripten.org/docs/tools_reference/settings_reference.html
+
+https://github.com/emscripten-core/emscripten/issues/19742
+
+```
+undefined symbol std::__1::basic_string
+```
+
 ### include ?
 
 ozz-animation のビルドができない
