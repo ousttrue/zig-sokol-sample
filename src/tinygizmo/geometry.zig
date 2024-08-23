@@ -2,15 +2,15 @@ const std = @import("std");
 const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
-const Vec4 = rowmath.Vec4;
+const Rgba = rowmath.Rgba;
 const Ray = rowmath.Ray;
 
 const TAU = 6.28318530718;
 
 pub const GeometryVertex = struct {
-    position: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    normal: Vec3 = .{ .x = 0, .y = 0, .z = 0 },
-    color: Vec4 = .{ .x = 0, .y = 0, .z = 0, .w = 0 },
+    position: Vec3 = Vec3.zero,
+    normal: Vec3 = Vec3.zero,
+    color: Rgba = .{ .r = 1, .g = 1, .b = 1, .a = 1 },
 };
 
 fn make_const_mesh(_vertices: anytype, _triangles: anytype) type {
@@ -31,7 +31,7 @@ fn compute_normals(vertices: []GeometryVertex, triangles: []const [3]u16) void {
             const v0 = vertices[i].position;
             for (i..vertices.len) |j| {
                 const v1 = vertices[j].position;
-                if (v1.sub(v0).len2() < NORMAL_EPSILON) {
+                if (v1.sub(v0).sqNorm() < NORMAL_EPSILON) {
                     uniqueVertIndices[j] = uniqueVertIndices[i];
                 }
             }
@@ -56,7 +56,7 @@ fn compute_normals(vertices: []GeometryVertex, triangles: []const [3]u16) void {
         vertices[i].normal = vertices[uniqueVertIndices[i] - 1].normal;
     }
     for (vertices) |*v| {
-        v.normal = v.normal.norm();
+        v.normal = v.normal.normalize();
     }
 }
 
@@ -208,9 +208,9 @@ pub const GeometryMesh = struct {
 
 pub const MeshComponent = struct {
     mesh: GeometryMesh,
-    base_color: Vec4,
+    base_color: Rgba,
 
-    pub fn init(mesh: type, base_color: Vec4) @This() {
+    pub fn init(mesh: type, base_color: Rgba) @This() {
         return .{
             .mesh = .{
                 .vertices = &mesh.vertices,

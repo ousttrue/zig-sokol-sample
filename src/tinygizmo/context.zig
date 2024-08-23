@@ -2,7 +2,7 @@ const std = @import("std");
 const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
-const Vec4 = rowmath.Vec4;
+const Rgba = rowmath.Rgba;
 const Mat4 = rowmath.Mat4;
 const Transform = rowmath.Transform;
 const Ray = rowmath.Ray;
@@ -36,8 +36,8 @@ pub const RING_POINTS = [_]Vec2{
 
 fn detransform(p: Transform, r: Ray) Ray {
     return .{
-        .origin = p.detransform_point(r.origin),
-        .direction = p.detransform_vector(r.direction),
+        .origin = p.detransformPoint(r.origin),
+        .direction = p.detransformVector(r.direction),
     };
 }
 
@@ -76,7 +76,7 @@ pub const ApplicationState = struct {
     snap_rotation: f32 = 0,
 
     fn scale_screenspace(self: @This(), position: rowmath.Vec3, pixel_scale: f32) f32 {
-        const dist = position.sub(self.ray.origin).len();
+        const dist = position.sub(self.ray.origin).norm();
         return std.math.tan(self.cam_yFov) * dist * (pixel_scale / self.viewport_size.y);
     }
 
@@ -118,18 +118,18 @@ pub const Context = struct {
 
 pub const Renderable = struct {
     mesh: geometry.GeometryMesh,
-    base_color: Vec4,
+    base_color: Rgba,
     matrix: Mat4,
     hover: bool,
     active: bool,
 
-    pub fn color(self: @This()) Vec4 {
+    pub fn color(self: @This()) Rgba {
         if (self.hover) {
             return .{
-                .x = std.math.lerp(self.base_color.x, 1, 0.5),
-                .y = std.math.lerp(self.base_color.y, 1, 0.5),
-                .z = std.math.lerp(self.base_color.z, 1, 0.5),
-                .w = std.math.lerp(self.base_color.w, 1, 0.5),
+                .r = std.math.lerp(self.base_color.r, 1, 0.5),
+                .g = std.math.lerp(self.base_color.g, 1, 0.5),
+                .b = std.math.lerp(self.base_color.b, 1, 0.5),
+                .a = std.math.lerp(self.base_color.a, 1, 0.5),
             };
         } else {
             return self.base_color;

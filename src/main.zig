@@ -80,14 +80,14 @@ fn draw_camera_frustum(camera: Camera, _cursor: ?Vec2) void {
     draw_line(frustom.near_bottom_right, frustom.near_bottom_left);
     draw_line(frustom.near_bottom_left, frustom.near_top_left);
 
-    draw_line(Vec3.ZERO, frustom.far_top_left);
-    draw_line(Vec3.ZERO, frustom.far_top_right);
-    draw_line(Vec3.ZERO, frustom.far_bottom_left);
-    draw_line(Vec3.ZERO, frustom.far_bottom_right);
+    draw_line(Vec3.zero, frustom.far_top_left);
+    draw_line(Vec3.zero, frustom.far_top_right);
+    draw_line(Vec3.zero, frustom.far_bottom_left);
+    draw_line(Vec3.zero, frustom.far_bottom_right);
 
     if (_cursor) |cursor| {
         sokol.gl.c3f(1, 1, 0);
-        draw_line(Vec3.ZERO, .{
+        draw_line(Vec3.zero, .{
             .x = frustom.far_top_right.x * cursor.x,
             .y = frustom.far_top_right.y * cursor.y,
             .z = frustom.far_top_right.z,
@@ -105,10 +105,10 @@ fn draw_gizmo(drawlist: []const tinygizmo.Renderable) void {
         defer sokol.gl.end();
         const color = m.color();
         sokol.gl.c4f(
-            color.x,
-            color.y,
-            color.z,
-            color.w,
+            color.r,
+            color.g,
+            color.b,
+            color.a,
         );
         for (m.mesh.triangles) |triangle| {
             for (triangle) |i| {

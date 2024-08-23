@@ -3,6 +3,7 @@ const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
 const Vec4 = rowmath.Vec4;
+const Rgba = rowmath.Rgba;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 const Ray = rowmath.Ray;
@@ -12,36 +13,36 @@ const context = @import("context.zig");
 
 const rotate_x = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.RIGHT,
-        Vec3.UP,
-        Vec3.FORWARD,
+        Vec3.right,
+        Vec3.up,
+        Vec3.forward,
         32,
         &context.RING_POINTS,
         0.003,
     ),
-    Vec4.RED,
+    Rgba.red,
 );
 const rotate_y = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.UP,
-        Vec3.FORWARD,
-        Vec3.RIGHT,
+        Vec3.up,
+        Vec3.forward,
+        Vec3.right,
         32,
         &context.RING_POINTS,
         -0.003,
     ),
-    Vec4.GREEN,
+    Rgba.green,
 );
 const rotate_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.FORWARD,
-        Vec3.RIGHT,
-        Vec3.UP,
+        Vec3.forward,
+        Vec3.right,
+        Vec3.up,
         32,
         &context.RING_POINTS,
         0,
     ),
-    Vec4.BLUE,
+    Rgba.blue,
 );
 fn rotation_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
     var component: ?InteractionMode = null;
@@ -190,9 +191,9 @@ const Drag = struct {
         const original_pose = Transform.trs(
             self.original_position,
             start_orientation,
-            Vec3.ONE,
+            Vec3.one,
         );
-        const the_axis = original_pose.transform_vector(axis);
+        const the_axis = original_pose.transformVector(axis);
         const the_plane = Vec4{
             .x = the_axis.x,
             .y = the_axis.y,
@@ -202,8 +203,8 @@ const Drag = struct {
 
         if (intersect_ray_plane(r, the_plane)) |t| {
             const center_of_rotation = self.original_position.add(the_axis.scale(the_axis.dot(self.local_click.sub(self.original_position))));
-            const arm1 = self.local_click.sub(center_of_rotation).norm();
-            const arm2 = r.point(t).sub(center_of_rotation).norm();
+            const arm1 = self.local_click.sub(center_of_rotation).normalize();
+            const arm2 = r.point(t).sub(center_of_rotation).normalize();
 
             const d = arm1.dot(arm2);
             if (d > 0.999) {
@@ -219,7 +220,7 @@ const Drag = struct {
                 const snapped = make_rotation_quat_between_vectors_snapped(arm1, arm2, snap_rotation);
                 return snapped.mul(start_orientation);
             } else {
-                const a = arm1.cross(arm2).norm();
+                const a = arm1.cross(arm2).normalize();
                 return Quat.axisAngle(a, angle).mul(start_orientation);
             }
         }
@@ -239,10 +240,10 @@ fn make_rotation_quat_between_vectors_snapped(
     to: Vec3,
     angle: f32,
 ) Quat {
-    const a = from.norm();
-    const b = to.norm();
+    const a = from.normalize();
+    const b = to.normalize();
     const snappedAcos = std.math.floor(std.math.acos(a.dot(b)) / angle) * angle;
-    return make_rotation_quat_axis_angle(a.cross(b).norm(), snappedAcos);
+    return make_rotation_quat_axis_angle(a.cross(b).normalize(), snappedAcos);
 }
 
 fn make_rotation_quat_axis_angle(axis: Vec3, angle: f32) Quat {
@@ -269,12 +270,12 @@ pub const RotationContext = struct {
         local_toggle: bool,
         _p: *Transform,
     ) !void {
-        std.debug.assert(_p.rigid_transform.rotation.length2() > 1e-6);
+        std.debug.assert(_p.rigid_transform.rotation.sqNorm() > 1e-6);
 
         var p = Transform.trs(
             _p.rigid_transform.translation,
-            if (local_toggle) _p.rigid_transform.rotation else Quat.IDENTITY,
-            Vec3.ONE,
+            if (local_toggle) _p.rigid_transform.rotation else Quat.identity,
+            Vec3.one,
         );
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);
         const _component, const best_t = rotation_intersect(
@@ -293,9 +294,9 @@ pub const RotationContext = struct {
                     .original_orientation = _p.rigid_transform.rotation,
                     .local_click = local_click,
                     .active_axis = switch (component) {
-                        .Rotate_x => Vec3.RIGHT,
-                        .Rotate_y => Vec3.UP,
-                        .Rotate_z => Vec3.FORWARD,
+                        .Rotate_x => Vec3.right,
+                        .Rotate_y => Vec3.up,
+                        .Rotate_z => Vec3.forward,
                     },
                 };
             }
@@ -308,7 +309,7 @@ pub const RotationContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        Vec3.RIGHT,
+                        Vec3.right,
                         drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
@@ -319,7 +320,7 @@ pub const RotationContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        Vec3.UP,
+                        Vec3.up,
                         drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;
@@ -330,7 +331,7 @@ pub const RotationContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_rotation,
                         ctx.active_state.ray,
-                        Vec3.FORWARD,
+                        Vec3.forward,
                         drag.original_orientation,
                     )) |rot| {
                         p.rigid_transform.rotation = rot;

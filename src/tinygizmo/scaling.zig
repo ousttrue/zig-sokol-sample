@@ -3,6 +3,7 @@ const rowmath = @import("rowmath");
 const Vec2 = rowmath.Vec2;
 const Vec3 = rowmath.Vec3;
 const Vec4 = rowmath.Vec4;
+const Rgba = rowmath.Rgba;
 const Quat = rowmath.Quat;
 const Mat4 = rowmath.Mat4;
 const Ray = rowmath.Ray;
@@ -12,36 +13,36 @@ const context = @import("context.zig");
 
 const scale_x = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.RIGHT,
-        Vec3.UP,
-        Vec3.FORWARD,
+        Vec3.right,
+        Vec3.up,
+        Vec3.forward,
         16,
         &context.MACE_POINTS,
         0,
     ),
-    Vec4.RED,
+    Rgba.red,
 );
 const scale_y = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.UP,
-        Vec3.FORWARD,
-        Vec3.RIGHT,
+        Vec3.up,
+        Vec3.forward,
+        Vec3.right,
         16,
         &context.MACE_POINTS,
         0,
     ),
-    Vec4.GREEN,
+    Rgba.green,
 );
 const scale_z = geometry.MeshComponent.init(
     geometry.make_lathed_geometry(
-        Vec3.FORWARD,
-        Vec3.RIGHT,
-        Vec3.UP,
+        Vec3.forward,
+        Vec3.right,
+        Vec3.up,
         16,
         &context.MACE_POINTS,
         0,
     ),
-    Vec4.BLUE,
+    Rgba.blue,
 );
 fn scale_intersect(local_ray: Ray) struct { ?InteractionMode, f32 } {
     var component: ?InteractionMode = null;
@@ -134,8 +135,12 @@ const Drag = struct {
         if (t < 0) return null;
 
         const distance = ray.point(t);
-
-        var offset_on_axis = (distance.sub(self.click_offset)).mul_each(axis);
+        const dist_from_click = distance.sub(self.click_offset);
+        var offset_on_axis = Vec3{
+            .x = dist_from_click.x * axis.x,
+            .y = dist_from_click.y * axis.x,
+            .z = dist_from_click.y * axis.z,
+        };
         offset_on_axis = flush_to_zero(offset_on_axis);
         var new_scale = self.original_scale.add(offset_on_axis);
 
@@ -165,7 +170,7 @@ pub const ScalingContext = struct {
         var p = Transform.trs(
             _p.rigid_transform.translation,
             _p.rigid_transform.rotation,
-            Vec3.ONE,
+            Vec3.one,
         );
         const local_ray, const draw_scale = ctx.active_state.local_ray(p);
         const _component, const best_t = scale_intersect(
@@ -178,7 +183,7 @@ pub const ScalingContext = struct {
                 self.active = .{
                     .component = component,
                     .original_scale = _p.scale,
-                    .click_offset = p.transform_point(local_ray.point(best_t)),
+                    .click_offset = p.transformPoint(local_ray.point(best_t)),
                 };
             }
         }
@@ -194,7 +199,7 @@ pub const ScalingContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_scale,
                         ctx.active_state.ray,
-                        Vec3.RIGHT,
+                        Vec3.right,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -206,7 +211,7 @@ pub const ScalingContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_scale,
                         ctx.active_state.ray,
-                        Vec3.UP,
+                        Vec3.up,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -218,7 +223,7 @@ pub const ScalingContext = struct {
                         ctx.active_state.mouse_left,
                         ctx.active_state.snap_scale,
                         ctx.active_state.ray,
-                        Vec3.FORWARD,
+                        Vec3.forward,
                         _p.rigid_transform.translation,
                         uniform,
                     )) |new_scale| {
@@ -229,7 +234,7 @@ pub const ScalingContext = struct {
             }
         }
 
-        const scaleMatrix = Mat4.scale_uniform(draw_scale);
+        const scaleMatrix = Mat4.scaleUniform(draw_scale);
         const modelMatrix = p.matrix().mul(scaleMatrix);
         for ([_]InteractionMode{ .Scale_x, .Scale_y, .Scale_z }) |i| {
             if (get(i)) |c| {
