@@ -81,7 +81,7 @@ pub fn make_lathed_geometry(
     var v_index: usize = 0;
     var t_index: usize = 0;
 
-    @setEvalBranchQuota(4000);
+    @setEvalBranchQuota(2000);
     for (0..slices + 1) |i| {
         const angle = (@as(f32, @floatFromInt(i % slices)) * TAU / slices) + (TAU / 8.0);
         const c = std.math.cos(angle);

@@ -1,6 +1,6 @@
 const std = @import("std");
 const builtin = @import("builtin");
-const sokol = @import("sokol");
+const emsdk_zig = @import("emsdk-zig");
 
 const NAME = "zig-sokol-sample";
 const MAIN = "src/main.zig";
@@ -52,22 +52,21 @@ pub fn build(b: *std.Build) void {
     if (target.result.isWasm()) {
         // create a build step which invokes the Emscripten linker
         const emsdk = dep_sokol.builder.dependency("emsdk", .{});
-        const link_step = try sokol.emLinkStep(b, .{
+        const link_step = try emsdk_zig.emLinkStep(b, emsdk, .{
             .lib_main = compile,
             .target = target,
             .optimize = optimize,
-            .emsdk = emsdk,
             .use_webgl2 = true,
             .use_emmalloc = true,
             .use_filesystem = false,
             .shell_file_path = dep_sokol.path("src/sokol/web/shell.html").getPath(b),
-            .extra_args = &.{
+            .extra_before = &.{
                 "-sTOTAL_MEMORY=200MB",
                 "-sUSE_OFFSET_CONVERTER=1",
             },
         });
         // ...and a special run step to start the web build output via 'emrun'
-        const run = sokol.emRunStep(b, .{ .name = NAME, .emsdk = emsdk });
+        const run = emsdk_zig.emRunStep(b, emsdk, .{ .name = NAME });
         run.step.dependOn(&link_step.step);
         b.step("run", "Run sample").dependOn(&run.step);
 
