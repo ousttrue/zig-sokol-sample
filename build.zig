@@ -65,6 +65,8 @@ pub fn build(b: *std.Build) void {
                 "-sUSE_OFFSET_CONVERTER=1",
             },
         });
+        b.getInstallStep().dependOn(&link_step.step);
+
         // ...and a special run step to start the web build output via 'emrun'
         const run = emsdk_zig.emRunStep(b, emsdk, .{ .name = NAME });
         run.step.dependOn(&link_step.step);
