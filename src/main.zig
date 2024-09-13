@@ -14,7 +14,6 @@ const Vec3 = rowmath.Vec3;
 const Vec2 = rowmath.Vec2;
 const Camera = rowmath.Camera;
 const InputState = rowmath.InputState;
-const dockspace = @import("dockspace.zig");
 
 const ROOT_DOCK_SPACE = "ROOT_DOCK_SPACE";
 
@@ -46,8 +45,6 @@ const state = struct {
     var gizmo_c: tinygizmo.ScalingContext = .{};
     var drawlist: std.ArrayList(tinygizmo.Renderable) = undefined;
 
-    // var docks: std.ArrayList(dockspace.DockItem) = undefined;
-    var root_dock_node: *dockspace.DockNode = undefined;
     var hover = false;
     var offscreen_cursor: Vec2 = .{ .x = 0, .y = 0 };
     var display_cursor: Vec2 = .{ .x = 0, .y = 0 };
@@ -118,30 +115,6 @@ fn draw_gizmo(drawlist: []const tinygizmo.Renderable) void {
     }
 }
 
-fn show_demo(name: []const u8, p_open: *bool) void {
-    _ = name;
-    if (p_open.*) {
-        ig.igShowDemoWindow(p_open);
-    }
-}
-
-fn show_bgcolor(name: []const u8, p_open: *bool) void {
-    ig.igSetNextWindowPos(
-        .{ .x = 100, .y = 10 },
-        ig.ImGuiCond_Once,
-        .{ .x = 0, .y = 0 },
-    );
-    ig.igSetNextWindowSize(.{ .x = 400, .y = 100 }, ig.ImGuiCond_Once);
-    if (ig.igBegin(&name[0], p_open, ig.ImGuiWindowFlags_None)) {
-        _ = ig.igColorEdit3(
-            "Background",
-            &state.display.pass_action.colors[0].clear_value.r,
-            ig.ImGuiColorEditFlags_None,
-        );
-    }
-    ig.igEnd();
-}
-
 fn show_subview(name: []const u8, p_open: *bool) void {
     // ig.igSetNextWindowPos(
     //     .{ .x = 10, .y = 30 },
@@ -197,41 +170,6 @@ export fn init() void {
     simgui.setup(.{
         .logger = .{ .func = sokol.log.func },
     });
-    dockspace.init();
-    // state.docks = std.ArrayList(dockspace.DockItem).init(state.allocator);
-
-    // demo
-    // state.docks.append(dockspace.DockItem.make(
-    //     "demo",
-    //     &show_demo,
-    // ).show(false)) catch @panic("append demo");
-    //
-    // // bg color
-    // state.docks.append(dockspace.DockItem.make(
-    //     "bg color",
-    //     &show_bgcolor,
-    // ).show(false)) catch @panic("append bgcolor");
-
-    {
-        // sub view
-        state.root_dock_node = dockspace.DockNode.make_empty(
-            state.allocator,
-            ROOT_DOCK_SPACE,
-        ) catch unreachable;
-
-        const left = dockspace.DockNode.make(
-            state.allocator,
-            "debug view",
-            &show_subview,
-        ) catch @panic("DockNode [debug view]");
-
-        const right = dockspace.DockNode.make_empty(
-            state.allocator,
-            "empty right",
-        ) catch unreachable;
-
-        state.root_dock_node.split(.Horizontal, left, right);
-    }
 
     sokol.gl.setup(.{
         .logger = .{ .func = sokol.log.func },
@@ -313,9 +251,11 @@ export fn frame() void {
         ) catch @panic("transform b");
     }
 
-    // the offscreen pass, rendering an rotating, untextured donut into a render target image
+    // the offscreen pass, rendering an rotating,
+    // untextured donut into a render target image
     //=== UI CODE STARTS HERE
-    dockspace.frame(ROOT_DOCK_SPACE, state.root_dock_node);
+    var show = true;
+    show_subview("debug", &show);
     //=== UI CODE ENDS HERE
 
     {
@@ -325,16 +265,7 @@ export fn frame() void {
 
         // grid
         linegeom.grid();
-
         scene.draw(.{ .camera = state.display.camera });
-        const hover = true;
-        draw_camera_frustum(
-            state.offscreen.camera,
-            if (hover)
-                state.offscreen_cursor
-            else
-                null,
-        );
         draw_gizmo(state.drawlist.items);
     }
     sg.commit();
