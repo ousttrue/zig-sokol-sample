@@ -32,7 +32,6 @@ pub fn build(b: *std.Build) void {
     else
         buildNative(b, target, optimize);
 
-    compile.step.dependOn(buildShader(b, target, "src/teapot.glsl"));
     compile.step.dependOn(buildShader(b, target, "src/cube.glsl"));
 
     compile.root_module.addImport("sokol", dep_sokol.module("sokol"));
