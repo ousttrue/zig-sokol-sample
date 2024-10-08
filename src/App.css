@@ -22,7 +22,24 @@ body,
   figure {
     margin: 0;
     padding: 0;
+    width: 150px;
+    height: 78px;
   }
+
+  ul {
+  }
+
+  li {
+    display: inline;
+  }
+}
+
+.orange {
+  border-color: orange;
+}
+
+.orange {
+  font-size: small;
 }
 
 ul {
