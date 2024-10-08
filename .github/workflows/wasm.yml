@@ -28,23 +28,29 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # build wasm
       - uses: goto-bus-stop/setup-zig@v2
-      - name: build Wasm
-        run: |
-          zig build --summary all -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
-          mkdir -p docs/static/wasm
-          cp zig-out/web/* docs/static/wasm/
-          zig build docs --summary all -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
-          cp zig-out/docs/* docs/static/wasm/
-      # docusaurus
+        with:
+          version: 0.13.0
       - uses: actions/setup-node@v3
         with:
           node-version: 18
-      - name: Install dependencies
+      - name: build Wasm
         run: |
-          cd docs
+          sudo apt install meson ninja-build
+          zig build --summary all -Dsokol -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
+          find zig-out
+          mkdir -p public
+          cp -rp zig-out/web public/wasm
+      - name: start http
+        run: |
           npm install
+          npm start&
+      # ss
+      - name: playwright
+        run: |
+          npx playwright install --with-deps chromium
+          npm run ss
+          echo "screenshot done"
           npm run build
       # deploy
       - name: Setup Pages
@@ -52,7 +58,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: './docs/build'
+          path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2

@@ -1,153 +1,185 @@
 const std = @import("std");
 const builtin = @import("builtin");
+const build_example = @import("build_example.zig");
 const emsdk_zig = @import("emsdk-zig");
 
-const NAME = "zig-sokol-sample";
-const MAIN = "src/main.zig";
+const WASM_ARGS = [_][]const u8{
+    // default 64MB
+    "-sSTACK_SIZE=256MB",
+    // must STACK_SIZE < TOTAL_MEMORY
+    "-sTOTAL_MEMORY=1024MB",
+    "-sUSE_OFFSET_CONVERTER=1",
+    "-sSTB_IMAGE=1",
+    "-Wno-limited-postlink-optimizations",
+};
+
+const WASM_ARGS_DEBUG = [_][]const u8{
+    "-g",
+    "-sASSERTIONS",
+};
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const rowmath_dep = b.dependency("rowmath", .{});
-    const rowmath = rowmath_dep.module("rowmath");
+    const deps = Deps.init(b, target, optimize);
 
-    const dep_sokol = b.dependency("sokol", .{
-        .target = target,
-        .optimize = optimize,
-        .with_sokol_imgui = true,
-    });
-    const dep_cimgui = b.dependency("cimgui", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    // inject the cimgui header search path into the sokol C library compile step
-    const cimgui_root = dep_cimgui.namedWriteFiles("cimgui").getDirectory();
-    dep_sokol.artifact("sokol_clib").addIncludePath(cimgui_root);
-    dep_sokol.artifact("sokol_clib").addCSourceFile(.{ .file = b.path("deps/cimgui//custom_button_behaviour.cpp") });
+    for (build_example.examples) |example| {
 
-    // special case handling for native vs web build
-    const compile = if (target.result.isWasm())
-        buildWeb(b, target, optimize)
-    else
-        buildNative(b, target, optimize);
+        // special case handling for native vs web build
+        const compile = if (target.result.isWasm()) blk: {
+            const lib = b.addStaticLibrary(.{
+                .name = example.name,
+                .target = target,
+                .optimize = optimize,
+                .root_source_file = b.path(example.root_source),
+            });
+            break :blk lib;
+        } else blk: {
+            const exe = b.addExecutable(.{
+                .name = example.name,
+                .root_source_file = b.path(example.root_source),
+                .target = target,
+                .optimize = optimize,
+            });
+            break :blk exe;
+        };
 
-    compile.step.dependOn(buildShader(b, target, "src/cube.glsl"));
+        if (example.shader) |shader| {
+            compile.step.dependOn(buildShader(b, target, shader));
+        }
 
-    compile.root_module.addImport("sokol", dep_sokol.module("sokol"));
-    compile.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
-    b.installArtifact(compile);
+        deps.inject(compile);
 
-    // rowmath
-    compile.root_module.addImport("rowmath", rowmath);
+        if (target.result.isWasm()) {
+            deps.linkWasm(b, target, optimize, compile);
+        } else {
+            const install = b.addInstallArtifact(compile, .{});
+            b.getInstallStep().dependOn(&install.step);
 
-    // tinygizmo
-    const tinygizmo = b.createModule(.{
-        .root_source_file = b.path("src/tinygizmo/main.zig"),
-    });
-    tinygizmo.addImport("rowmath", rowmath);
-    compile.root_module.addImport("tinygizmo", tinygizmo);
+            const run = b.addRunArtifact(compile);
+            run.step.dependOn(&install.step);
 
-    if (target.result.isWasm()) {
-        // create a build step which invokes the Emscripten linker
-        const emsdk = dep_sokol.builder.dependency("emsdk", .{});
-        const link_step = try emsdk_zig.emLinkStep(b, emsdk, .{
-            .lib_main = compile,
+            b.step(
+                b.fmt("run-{s}", .{example.name}),
+                b.fmt("Run {s}", .{example.name}),
+            ).dependOn(&run.step);
+        }
+    }
+}
+
+const Deps = struct {
+    rowmath_dep: *std.Build.Dependency,
+    rowmath: *std.Build.Module,
+    sokol_dep: *std.Build.Dependency,
+    cimgui_dep: *std.Build.Dependency,
+    dbgui: *std.Build.Module,
+    emsdk_dep: *std.Build.Dependency,
+
+    fn init(
+        b: *std.Build,
+        target: std.Build.ResolvedTarget,
+        optimize: std.builtin.OptimizeMode,
+    ) @This() {
+        const rowmath_dep = b.dependency("rowmath", .{});
+        const rowmath = rowmath_dep.module("rowmath");
+
+        const sokol_dep = b.dependency("sokol", .{
             .target = target,
             .optimize = optimize,
-            .use_webgl2 = true,
-            .use_emmalloc = true,
-            .use_filesystem = false,
-            .shell_file_path = dep_sokol.path("src/sokol/web/shell.html").getPath(b),
-            .extra_before = &.{
-                "-sTOTAL_MEMORY=200MB",
-                "-sUSE_OFFSET_CONVERTER=1",
-            },
+            .with_sokol_imgui = true,
         });
-        b.getInstallStep().dependOn(&link_step.step);
+        const cimgui_dep = b.dependency("cimgui", .{
+            .target = target,
+            .optimize = optimize,
+        });
+        // inject the cimgui header search path into the sokol C library compile step
+        const cimgui_root = cimgui_dep.namedWriteFiles("cimgui").getDirectory();
+        sokol_dep.artifact("sokol_clib").addIncludePath(cimgui_root);
+        sokol_dep.artifact("sokol_clib").addCSourceFile(.{ .file = b.path("deps/cimgui//custom_button_behaviour.cpp") });
 
-        // ...and a special run step to start the web build output via 'emrun'
-        const run = emsdk_zig.emRunStep(b, emsdk, .{ .name = NAME });
-        run.step.dependOn(&link_step.step);
-        b.step("run", "Run sample").dependOn(&run.step);
+        const dbgui = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .root_source_file = b.path("sokol_examples/libs/dbgui/dbgui.zig"),
+        });
+        dbgui.addImport("sokol", sokol_dep.module("sokol"));
 
-        const emsdk_incl_path = emsdk.path("upstream/emscripten/cache/sysroot/include");
-        dep_cimgui.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
+        const emsdk_dep = b.dependency("emsdk-zig", .{}).builder.dependency("emsdk", .{});
+
+        return .{
+            .emsdk_dep = emsdk_dep,
+            .rowmath_dep = rowmath_dep,
+            .rowmath = rowmath,
+            .sokol_dep = sokol_dep,
+            .cimgui_dep = cimgui_dep,
+            .dbgui = dbgui,
+        };
+    }
+
+    fn inject(
+        self: @This(),
+        compile: *std.Build.Step.Compile,
+    ) void {
+        compile.root_module.addImport("sokol", self.sokol_dep.module("sokol"));
+        compile.root_module.addImport("cimgui", self.cimgui_dep.module("cimgui"));
+        compile.root_module.addImport("rowmath", self.rowmath);
+        compile.root_module.addImport("dbgui", self.dbgui);
+    }
+
+    fn linkWasm(
+        self: @This(),
+        b: *std.Build,
+        target: std.Build.ResolvedTarget,
+        optimize: std.builtin.OptimizeMode,
+        compile: *std.Build.Step.Compile,
+    ) void {
+        const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
+        self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
 
         // all C libraries need to depend on the sokol library, when building for
         // WASM this makes sure that the Emscripten SDK has been setup before
         // C compilation is attempted (since the sokol C library depends on the
         // Emscripten SDK setup step)
-        dep_cimgui.artifact("cimgui_clib").step.dependOn(&dep_sokol.artifact("sokol_clib").step);
-    } else {
-        //
-        // test
-        //
-        const unit_tests = b.addTest(.{
+        self.cimgui_dep.artifact("cimgui_clib").step.dependOn(
+            &self.sokol_dep.artifact("sokol_clib").step,
+        );
+
+        // create a build step which invokes the Emscripten linker
+        const emcc = try emsdk_zig.emLinkCommand(b, self.emsdk_dep, .{
+            .lib_main = compile,
             .target = target,
             .optimize = optimize,
-            .root_source_file = b.path("src/main.zig"),
+            .use_webgl2 = true,
+            .use_emmalloc = true,
+            .use_filesystem = true,
+            .shell_file_path = self.sokol_dep.path("src/sokol/web/shell.html").getPath(b),
+            .release_use_closure = false,
+            .extra_before = if (optimize == .Debug)
+                &(WASM_ARGS ++ WASM_ARGS_DEBUG)
+            else
+                &WASM_ARGS,
         });
-        b.step("test", "Run unit tests").dependOn(&b.addRunArtifact(unit_tests).step);
-        unit_tests.root_module.addImport("sokol", dep_sokol.module("sokol"));
-        unit_tests.root_module.addImport("cimgui", dep_cimgui.module("cimgui"));
+
+        emcc.addArg("-o");
+        const out_file = emcc.addOutputFileArg(b.fmt("{s}.html", .{compile.name}));
+
+        // the emcc linker creates 3 output files (.html, .wasm and .js)
+        const install = b.addInstallDirectory(.{
+            .source_dir = out_file.dirname(),
+            .install_dir = .prefix,
+            .install_subdir = "web",
+        });
+        install.step.dependOn(&emcc.step);
+        b.getInstallStep().dependOn(&install.step);
     }
-
-    // docs
-    const docs_step = b.step("docs", "Emit docs");
-    const docs_install = b.addInstallDirectory(.{
-        // .source_dir = dep_sokol.artifact("sokol").getEmittedDocs(),
-        .source_dir = compile.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs", // location
-    });
-    docs_step.dependOn(&docs_install.step);
-}
-
-fn buildWeb(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *std.Build.Step.Compile {
-    const lib = b.addStaticLibrary(.{
-        .name = NAME,
-        .target = target,
-        .optimize = optimize,
-        .root_source_file = b.path(MAIN),
-    });
-    return lib;
-}
-
-fn buildNative(
-    b: *std.Build,
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-) *std.Build.Step.Compile {
-    const exe = b.addExecutable(.{
-        .name = NAME,
-        .root_source_file = b.path(MAIN),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    //
-    // run
-    //
-    const run_cmd = b.addRunArtifact(exe);
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
-    }
-    b.step("run", "Run the app").dependOn(&run_cmd.step);
-
-    return exe;
-}
+};
 
 // a separate step to compile shaders, expects the shader compiler in ../sokol-tools-bin/
 fn buildShader(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
-    comptime shader: []const u8,
+    shader: []const u8,
 ) *std.Build.Step {
     const optional_shdc = comptime switch (builtin.os.tag) {
         .windows => "win32/sokol-shdc.exe",
@@ -164,7 +196,7 @@ fn buildShader(
         "-i",
         shader,
         "-o",
-        shader ++ ".zig",
+        b.fmt("{s}.zig", .{shader}),
         "-l",
         slang,
         "-f",
