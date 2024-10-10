@@ -21,6 +21,9 @@
             .url = "git+https://github.com/ousttrue/emsdk-zig.git#4b3df5dc7824514a3ef99c1dee77ee3087019050",
             .hash = "122062b769fe74a24375a9409bce954bdd378f79b4b9fd2adf7a23360634cf5ad55c",
         },
+        .stb_image = .{
+            .path = "sokol_examples/libs/stb",
+        },
     },
     .paths = .{
         "build.zig",

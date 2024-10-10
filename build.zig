@@ -48,6 +48,10 @@ pub fn build(b: *std.Build) void {
         if (example.shader) |shader| {
             compile.step.dependOn(buildShader(b, target, shader));
         }
+        for (example.assets) |asset| {
+            const install_asset = b.addInstallFile(b.path(asset.from), b.fmt("web/{s}", .{asset.to}));
+            compile.step.dependOn(&install_asset.step);
+        }
 
         deps.inject(compile);
 
@@ -59,7 +63,7 @@ pub fn build(b: *std.Build) void {
 
             const run = b.addRunArtifact(compile);
             run.step.dependOn(&install.step);
-
+            run.setCwd(b.path("zig-out/web"));
             b.step(
                 b.fmt("run-{s}", .{example.name}),
                 b.fmt("Run {s}", .{example.name}),
@@ -75,6 +79,7 @@ const Deps = struct {
     cimgui_dep: *std.Build.Dependency,
     dbgui: *std.Build.Module,
     emsdk_dep: *std.Build.Dependency,
+    stbi_dep: *std.Build.Dependency,
 
     fn init(
         b: *std.Build,
@@ -107,6 +112,11 @@ const Deps = struct {
 
         const emsdk_dep = b.dependency("emsdk-zig", .{}).builder.dependency("emsdk", .{});
 
+        const stbi_dep = b.dependency("stb_image", .{
+            .target = target,
+            .optimize = optimize,
+        });
+
         return .{
             .emsdk_dep = emsdk_dep,
             .rowmath_dep = rowmath_dep,
@@ -114,6 +124,7 @@ const Deps = struct {
             .sokol_dep = sokol_dep,
             .cimgui_dep = cimgui_dep,
             .dbgui = dbgui,
+            .stbi_dep = stbi_dep,
         };
     }
 
@@ -125,6 +136,7 @@ const Deps = struct {
         compile.root_module.addImport("cimgui", self.cimgui_dep.module("cimgui"));
         compile.root_module.addImport("rowmath", self.rowmath);
         compile.root_module.addImport("dbgui", self.dbgui);
+        compile.root_module.addImport("stb_image", &self.stbi_dep.artifact("stb_image").root_module);
     }
 
     fn linkWasm(

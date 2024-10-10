@@ -1,9 +1,15 @@
 const std = @import("std");
 
+pub const Asset = struct {
+    from: []const u8,
+    to: []const u8,
+};
+
 pub const Example = struct {
     name: []const u8,
     root_source: []const u8,
     shader: ?[]const u8 = null,
+    assets: []const Asset = &.{},
 };
 
 pub const examples = [_]Example{
@@ -77,7 +83,19 @@ pub const examples = [_]Example{
     // - [ ] [dyntex3d](sokol_examples/dyntex3d-sapp.zig)
     // - [ ] [dyntex](sokol_examples/dyntex-sapp.zig)
     // - [ ] [basisu](sokol_examples/basisu-sapp.zig)
-    // - [ ] [cubemap-jpeg](sokol_examples/cubemap-jpeg-sapp.zig)
+    .{
+        .name = "cubemap-jpeg",
+        .root_source = "sokol_examples/cubemap-jpeg-sapp.zig",
+        .shader = "sokol_examples/cubemap-jpeg-sapp.glsl",
+        .assets = &.{
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_negx.jpg", .to = "nb2_negx.jpg" },
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_negy.jpg", .to = "nb2_negy.jpg" },
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_negz.jpg", .to = "nb2_negz.jpg" },
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_posx.jpg", .to = "nb2_posx.jpg" },
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_posy.jpg", .to = "nb2_posy.jpg" },
+            .{ .from = "sokol_examples/data/nissibeach2/nb2_posz.jpg", .to = "nb2_posz.jpg" },
+        },
+    },
     // - [ ] [cubemaprt](sokol_examples/cubemaprt-sapp.zig)
     // - [ ] [miprender](sokol_examples/miprender-sapp.zig)
     // - [ ] [layerrender](sokol_examples/layerrender-sapp.zig)

@@ -15,10 +15,10 @@
             "name": "exe",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/zig-out/bin/zig-sokol-sample.exe",
+            "program": "${workspaceFolder}/zig-out/bin/cubemap-jpeg.exe",
             "args": [],
             "stopAtEntry": false,
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}/zig-out/web",
             "environment": [],
             "console": "integratedTerminal"
         },
