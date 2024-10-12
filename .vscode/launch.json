@@ -15,7 +15,7 @@
             "name": "exe",
             "type": "cppvsdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/zig-out/bin/cubemap-jpeg.exe",
+            "program": "${workspaceFolder}/zig-out/bin/mipmap.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}/zig-out/web",
