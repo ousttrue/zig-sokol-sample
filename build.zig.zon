@@ -24,6 +24,10 @@
         .stb_image = .{
             .path = "sokol_examples/libs/stb",
         },
+        .glfw = .{
+            .url = "git+https://github.com/glfw/glfw.git#b35641f4a3c62aa86a0b3c983d163bc0fe36026d",
+            .hash = "1220f703401bea1d52d240a9d217406aec89c687e8af2b2eed8dbb4d4ef653edbd96",
+        },
     },
     .paths = .{
         "build.zig",

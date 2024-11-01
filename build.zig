@@ -8,11 +8,68 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const deps = Deps.init(b, target, optimize);
     for (build_example.examples) |example| {
-        buildExample(b, target, optimize, deps, example);
+        build_a_example(b, target, optimize, deps, example);
     }
+
+    build_glfw(b, target, optimize, deps);
 }
 
-fn buildExample(
+fn build_glfw(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    deps: Deps,
+) void {
+    const exe = b.addExecutable(.{
+        .target = target,
+        .optimize = optimize,
+        .name = "sokol_glfw",
+        .root_source_file = b.path("sokol_glfw/main.zig"),
+    });
+
+    const glfw_dep = b.dependency("glfw", .{});
+    exe.addIncludePath(glfw_dep.path("include"));
+
+    exe.addCSourceFiles(.{
+        .root = glfw_dep.path("src"),
+        .files = &.{
+            "context.c",
+            "init.c",
+            "input.c",
+            "monitor.c",
+            "platform.c",
+            "vulkan.c",
+            "window.c",
+            "egl_context.c",
+            "osmesa_context.c",
+            "null_init.c",
+            "null_monitor.c",
+            "null_window.c",
+            "null_joystick.c",
+            // win32
+            "win32_module.c",
+            "win32_time.c",
+            "win32_thread.c",
+            "win32_init.c",
+            "win32_joystick.c",
+            "win32_monitor.c",
+            "win32_window.c",
+            "wgl_context.c",
+        },
+        .flags = &.{
+            "-D_GLFW_WIN32",
+        },
+    });
+
+    deps.inject(exe);
+
+    const install = b.addInstallArtifact(exe, .{});
+    const run = b.addRunArtifact(exe);
+    run.step.dependOn(&install.step);
+    b.step("run-glfw", "run sokol glfw sample").dependOn(&run.step);
+}
+
+fn build_a_example(
     b: *std.Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,

@@ -22,5 +22,16 @@
             "environment": [],
             "console": "integratedTerminal"
         },
+        {
+            "name": "glfw",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/zig-out/bin/sokol_glfw.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "console": "integratedTerminal"
+        },
     ]
 }

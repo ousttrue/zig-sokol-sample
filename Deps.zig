@@ -37,6 +37,7 @@ pub fn init(
         .target = target,
         .optimize = optimize,
         .with_sokol_imgui = true,
+        .gl = true,
     });
     const cimgui_dep = b.dependency("cimgui", .{
         .target = target,
