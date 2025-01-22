@@ -22,8 +22,8 @@
             .hash = "12209a003f1b957dc95faabf008bb53048de40324e8f3b1c8fcbf4933dc481844885",
         },
         .@"emsdk-zig" = .{
-            .url = "git+https://github.com/ousttrue/emsdk-zig.git#9b937b26b79c42fae3a6a8d9c156f02ca612480d",
-            .hash = "1220ae63c6f473c034d9ba811e85fe918f85ae3020f33d2ee6b067c05954c72e7aec",
+            .url = "git+https://github.com/ousttrue/emsdk-zig.git#809f22970be1011612bb7d30f66f86b29d373a4f",
+            .hash = "122054ac4d1e8660beed583ad89b800c69d982cc2353ca09c75df2bf114a99ad8df6",
         },
         .stb_image = .{
             .path = "sokol_examples/libs/stb",

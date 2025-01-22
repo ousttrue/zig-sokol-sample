@@ -95,8 +95,9 @@ pub fn linkWasm(
     compile: *std.Build.Step.Compile,
 ) void {
     const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
-    self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
-    compile.addSystemIncludePath(emsdk_incl_path);
+    const cimgui_clib = self.cimgui_dep.artifact("cimgui_clib");
+    cimgui_clib.addSystemIncludePath(emsdk_incl_path);
+    // compile.addSystemIncludePath(emsdk_incl_path);
 
     // all C libraries need to depend on the sokol library, when building for
     // WASM this makes sure that the Emscripten SDK has been setup before
@@ -120,6 +121,7 @@ pub fn linkWasm(
             &(WASM_ARGS ++ WASM_ARGS_DEBUG)
         else
             &WASM_ARGS,
+        .after_setup = &.{ &cimgui_clib.step },
     });
 
     emcc.addArg("-o");
