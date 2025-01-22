@@ -37,7 +37,7 @@ pub fn init(
         .target = target,
         .optimize = optimize,
         .with_sokol_imgui = true,
-        .gl = true,
+        // .gl = true,
     });
     const cimgui_dep = b.dependency("cimgui", .{
         .target = target,
@@ -94,8 +94,8 @@ pub fn linkWasm(
     optimize: std.builtin.OptimizeMode,
     compile: *std.Build.Step.Compile,
 ) void {
-    // const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
-    // self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
+    const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
+    self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
 
     // all C libraries need to depend on the sokol library, when building for
     // WASM this makes sure that the Emscripten SDK has been setup before
