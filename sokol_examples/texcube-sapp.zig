@@ -102,10 +102,10 @@ export fn init() void {
         .label = "texcube-texture",
     };
     img_desc.data.subimage[0][0] = sg.asRange(&pixels);
-    state.bind.fs.images[shader.SLOT_tex] = sg.makeImage(img_desc);
+    state.bind.images[shader.IMG_tex] = sg.makeImage(img_desc);
 
     // create a sampler object with default attributes
-    state.bind.fs.samplers[shader.SLOT_smp] = sg.makeSampler(.{
+    state.bind.samplers[shader.SMP_smp] = sg.makeSampler(.{
         .label = "texcube-sampler",
     });
 
@@ -120,9 +120,9 @@ export fn init() void {
         .depth = .{ .compare = .LESS_EQUAL, .write_enabled = true },
         .label = "texcube-pipeline",
     };
-    pip_desc.layout.attrs[shader.ATTR_vs_pos].format = .FLOAT3;
-    pip_desc.layout.attrs[shader.ATTR_vs_color0].format = .UBYTE4N;
-    pip_desc.layout.attrs[shader.ATTR_vs_texcoord0].format = .SHORT2N;
+    pip_desc.layout.attrs[shader.ATTR_texcube_pos].format = .FLOAT3;
+    pip_desc.layout.attrs[shader.ATTR_texcube_color0].format = .UBYTE4N;
+    pip_desc.layout.attrs[shader.ATTR_texcube_texcoord0].format = .SHORT2N;
     state.pip = sg.makePipeline(pip_desc);
 
     // default pass action
@@ -149,8 +149,8 @@ export fn frame() void {
     const view_proj = view.mul(proj);
     state.rx += 1.0 * t;
     state.ry += 2.0 * t;
-    const rxm = rowmath.Mat4.rotate(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = rowmath.Mat4.rotate(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = rowmath.Mat4.makeRotation(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = rowmath.Mat4.makeRotation(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = rxm.mul(rym);
     var vs_params = shader.VsParams{
         .mvp = model.mul(view_proj).m,
@@ -162,7 +162,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+    sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
     dbgui.draw();
     sg.endPass();

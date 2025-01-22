@@ -120,8 +120,8 @@ export fn init() void {
             .label = "offscreen-pipeline",
         };
         pip_desc.layout.buffers[0] = sokol.shape.vertexBufferLayoutState();
-        pip_desc.layout.attrs[shader.ATTR_vs_offscreen_position] = sokol.shape.positionVertexAttrState();
-        pip_desc.layout.attrs[shader.ATTR_vs_offscreen_normal] = sokol.shape.normalVertexAttrState();
+        pip_desc.layout.attrs[shader.ATTR_offscreen_position] = sokol.shape.positionVertexAttrState();
+        pip_desc.layout.attrs[shader.ATTR_offscreen_normal] = sokol.shape.normalVertexAttrState();
         pip_desc.colors[0].pixel_format = OFFSCREEN_PIXEL_FORMAT;
         state.offscreen.pip = sg.makePipeline(pip_desc);
     }
@@ -136,9 +136,9 @@ export fn init() void {
             .label = "default-pipeline",
         };
         pip_desc.layout.buffers[0] = sokol.shape.vertexBufferLayoutState();
-        pip_desc.layout.attrs[shader.ATTR_vs_default_position] = sokol.shape.positionVertexAttrState();
-        pip_desc.layout.attrs[shader.ATTR_vs_default_normal] = sokol.shape.normalVertexAttrState();
-        pip_desc.layout.attrs[shader.ATTR_vs_default_texcoord0] = sokol.shape.texcoordVertexAttrState();
+        pip_desc.layout.attrs[shader.ATTR_default_position] = sokol.shape.positionVertexAttrState();
+        pip_desc.layout.attrs[shader.ATTR_default_normal] = sokol.shape.normalVertexAttrState();
+        pip_desc.layout.attrs[shader.ATTR_default_texcoord0] = sokol.shape.texcoordVertexAttrState();
         state.display.pip = sg.makePipeline(pip_desc);
     }
 
@@ -157,8 +157,8 @@ export fn init() void {
     // resource bindings to render a textured shape, using the offscreen render target as texture
     state.display.bind.vertex_buffers[0] = vbuf;
     state.display.bind.index_buffer = ibuf;
-    state.display.bind.fs.images[shader.SLOT_tex] = color_img;
-    state.display.bind.fs.samplers[shader.SLOT_smp] = smp;
+    state.display.bind.images[shader.IMG_tex] = color_img;
+    state.display.bind.samplers[shader.SMP_smp] = smp;
 }
 
 // helper function to compute model-view-projection matrix
@@ -170,8 +170,8 @@ fn compute_mvp(rx: f32, ry: f32, aspect: f32, eye_dist: f32) Mat4 {
         .{ .x = 0.0, .y = 1.0, .z = 0.0 },
     );
     const view_proj = view.mul(proj);
-    const rxm = Mat4.rotate(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = Mat4.rotate(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = Mat4.makeRotation(rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = Mat4.makeRotation(ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = rym.mul(rxm);
     const mvp = model.mul(view_proj);
     return mvp;
@@ -189,7 +189,7 @@ export fn frame() void {
         sg.beginPass(state.offscreen.pass);
         sg.applyPipeline(state.offscreen.pip);
         sg.applyBindings(state.offscreen.bind);
-        sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+        sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
         sg.draw(state.donut.base_element, state.donut.num_elements, 1);
         sg.endPass();
     }
@@ -209,7 +209,7 @@ export fn frame() void {
         });
         sg.applyPipeline(state.display.pip);
         sg.applyBindings(state.display.bind);
-        sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+        sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
         sg.draw(state.sphere.base_element, state.sphere.num_elements, 1);
         dbgui.draw();
         sg.endPass();

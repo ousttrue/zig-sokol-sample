@@ -90,8 +90,8 @@ export fn init() void {
     };
     // test to provide buffer stride, but no attr offsets
     // pip_desc.layout.buffers[0].stride = 28;
-    pip_desc.layout.attrs[shader.ATTR_vs_position].format = .FLOAT3;
-    pip_desc.layout.attrs[shader.ATTR_vs_color0].format = .FLOAT4;
+    pip_desc.layout.attrs[shader.ATTR_cube_position].format = .FLOAT3;
+    pip_desc.layout.attrs[shader.ATTR_cube_color0].format = .FLOAT4;
     state.pip = sg.makePipeline(pip_desc);
 }
 
@@ -109,8 +109,8 @@ export fn frame() void {
     const view_proj = view.mul(proj);
     state.rx += 1.0 * t;
     state.ry += 2.0 * t;
-    const rxm = rowmath.Mat4.rotate(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = rowmath.Mat4.rotate(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = rowmath.Mat4.makeRotation(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = rowmath.Mat4.makeRotation(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = rxm.mul(rym);
     const mvp = model.mul(view_proj);
     const vs_params = shader.VsParams{
@@ -130,7 +130,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+    sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
     dbgui.draw();
     sg.endPass();

@@ -50,8 +50,8 @@ export fn init() void {
         .index_type = .UINT16,
         .label = "quad-pipeline",
     };
-    pip_desc.layout.attrs[shader.ATTR_vs_position].format = .FLOAT3;
-    pip_desc.layout.attrs[shader.ATTR_vs_color0].format = .FLOAT4;
+    pip_desc.layout.attrs[shader.ATTR_quad_position].format = .FLOAT3;
+    pip_desc.layout.attrs[shader.ATTR_quad_color0].format = .FLOAT4;
     state.pip = sg.makePipeline(pip_desc);
 
     // default pass action

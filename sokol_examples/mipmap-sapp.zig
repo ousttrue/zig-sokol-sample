@@ -147,8 +147,8 @@ export fn init() void {
         ),
         .primitive_type = .TRIANGLE_STRIP,
     };
-    pip_desc.layout.attrs[mipmap_shader.ATTR_vs_pos].format = .FLOAT3;
-    pip_desc.layout.attrs[mipmap_shader.ATTR_vs_uv0].format = .FLOAT2;
+    pip_desc.layout.attrs[mipmap_shader.ATTR_mipmap_pos].format = .FLOAT3;
+    pip_desc.layout.attrs[mipmap_shader.ATTR_mipmap_uv0].format = .FLOAT2;
     state.pip = sg.makePipeline(pip_desc);
 }
 
@@ -169,11 +169,11 @@ export fn frame() void {
     const view_proj = view.mul(proj);
 
     state.r += @floatCast(0.1 * 60.0 * sokol.app.frameDuration());
-    const rm = Mat4.rotate(state.r, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rm = Mat4.makeRotation(state.r, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
 
     var bind = sg.Bindings{};
     bind.vertex_buffers[0] = state.vbuf;
-    bind.fs.images[mipmap_shader.SLOT_tex] = state.img;
+    bind.images[mipmap_shader.IMG_tex] = state.img;
     {
         sg.beginPass(.{ .swapchain = sokol.glue.swapchain() });
         defer sg.endPass();
@@ -181,16 +181,15 @@ export fn frame() void {
         for (0..12) |i| {
             const x = (@as(f32, @floatFromInt(i & 3)) - 1.5) * 2.0;
             const y = (@as(f32, @floatFromInt(i / 4)) - 1.0) * -2.0;
-            const model = rm.mul(Mat4.translate(.{ .x = x, .y = y, .z = 0.0 }));
+            const model = rm.mul(Mat4.makeTranslation(.{ .x = x, .y = y, .z = 0.0 }));
             const vs_params = mipmap_shader.VsParams{
                 .mvp = model.mul(view_proj).m,
             };
 
-            bind.fs.samplers[mipmap_shader.SLOT_smp] = state.smp[i];
+            bind.samplers[mipmap_shader.SMP_smp] = state.smp[i];
             sg.applyBindings(bind);
             sg.applyUniforms(
-                .VS,
-                mipmap_shader.SLOT_vs_params,
+                mipmap_shader.UB_vs_params,
                 sg.asRange(&vs_params),
             );
             sg.draw(0, 4, 1);

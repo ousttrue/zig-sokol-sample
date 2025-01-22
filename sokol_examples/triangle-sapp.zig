@@ -42,8 +42,8 @@ export fn init() void {
         // if the vertex layout doesn't have gaps, don't need to provide strides and offsets
         .label = "triangle-pipeline",
     };
-    pip_desc.layout.attrs[shader.ATTR_vs_position].format = .FLOAT3;
-    pip_desc.layout.attrs[shader.ATTR_vs_color0].format = .FLOAT4;
+    pip_desc.layout.attrs[shader.ATTR_triangle_position].format = .FLOAT3;
+    pip_desc.layout.attrs[shader.ATTR_triangle_color0].format = .FLOAT4;
     state.pip = sg.makePipeline(pip_desc);
 
     // a pass action to clear framebuffer to black

@@ -44,9 +44,12 @@ pub fn init(
         .optimize = optimize,
     });
     // inject the cimgui header search path into the sokol C library compile step
-    const cimgui_root = cimgui_dep.namedWriteFiles("cimgui").getDirectory();
-    sokol_dep.artifact("sokol_clib").addIncludePath(cimgui_root);
-    sokol_dep.artifact("sokol_clib").addCSourceFile(.{ .file = b.path("deps/cimgui//custom_button_behaviour.cpp") });
+    // const cimgui_root = cimgui_dep.namedWriteFiles("cimgui").getDirectory();
+    // sokol_dep.artifact("sokol_clib").addIncludePath(cimgui_root);
+    // sokol_dep.artifact("sokol_clib").addCSourceFile(.{ .file = b.path("deps/cimgui//custom_button_behaviour.cpp") });
+
+    // inject the cimgui header search path into the sokol C library compile step
+    sokol_dep.artifact("sokol_clib").addIncludePath(cimgui_dep.path("src"));
 
     const dbgui = b.createModule(.{
         .target = target,
@@ -81,7 +84,7 @@ pub fn inject(
     compile.root_module.addImport("cimgui", self.cimgui_dep.module("cimgui"));
     compile.root_module.addImport("rowmath", self.rowmath);
     compile.root_module.addImport("dbgui", self.dbgui);
-    compile.root_module.addImport("stb_image", &self.stbi_dep.artifact("stb_image").root_module);
+    compile.root_module.addImport("stb_image", self.stbi_dep.artifact("stb_image").root_module);
 }
 
 pub fn linkWasm(
@@ -91,16 +94,16 @@ pub fn linkWasm(
     optimize: std.builtin.OptimizeMode,
     compile: *std.Build.Step.Compile,
 ) void {
-    const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
-    self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
+    // const emsdk_incl_path = self.emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
+    // self.cimgui_dep.artifact("cimgui_clib").addSystemIncludePath(emsdk_incl_path);
 
     // all C libraries need to depend on the sokol library, when building for
     // WASM this makes sure that the Emscripten SDK has been setup before
     // C compilation is attempted (since the sokol C library depends on the
     // Emscripten SDK setup step)
-    self.cimgui_dep.artifact("cimgui_clib").step.dependOn(
-        &self.sokol_dep.artifact("sokol_clib").step,
-    );
+    // self.cimgui_dep.artifact("cimgui_clib").step.dependOn(
+    //     &self.sokol_dep.artifact("sokol_clib").step,
+    // );
 
     // create a build step which invokes the Emscripten linker
     const emcc = try emsdk_zig.emLinkCommand(b, self.emsdk_dep, .{

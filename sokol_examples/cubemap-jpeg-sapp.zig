@@ -107,10 +107,10 @@ export fn init() void {
     state.bind.index_buffer = sg.makeBuffer(.{ .type = .INDEXBUFFER, .data = sg.asRange(&indices), .label = "cubemap-indices" });
 
     // allocate a texture handle, but initialize the texture later after data is loaded
-    state.bind.fs.images[shader.SLOT_tex] = sg.allocImage();
+    state.bind.images[shader.IMG_tex] = sg.allocImage();
 
     // a sampler object
-    state.bind.fs.samplers[shader.SLOT_smp] = sg.makeSampler(.{
+    state.bind.samplers[shader.SMP_smp] = sg.makeSampler(.{
         .min_filter = .LINEAR,
         .mag_filter = .LINEAR,
         .label = "cubemap-sampler",
@@ -123,7 +123,7 @@ export fn init() void {
         .depth = .{ .compare = .LESS_EQUAL, .write_enabled = true },
         .label = "cubemap-pipeline",
     };
-    pip_desc.layout.attrs[shader.ATTR_vs_pos].format = .FLOAT3;
+    pip_desc.layout.attrs[shader.ATTR_cubemap_pos].format = .FLOAT3;
     state.pip = sg.makePipeline(pip_desc);
 
     // load 6 cubemap face image files (note: filenames are in same order as SG_CUBEFACE_*)
@@ -195,7 +195,7 @@ export fn fetch_cb(response: [*c]const sokol.fetch.Response) void {
                 image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Y)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Y));
                 image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_Z));
                 image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Z));
-                sg.initImage(state.bind.fs.images[shader.SLOT_tex], image_desc);
+                sg.initImage(state.bind.images[shader.IMG_tex], image_desc);
                 state.allocator.free(state.pixels);
                 state.pixels = &.{};
             }
@@ -235,7 +235,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+    sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
     sokol.debugtext.draw();
     dbgui.draw();

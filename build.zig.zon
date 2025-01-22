@@ -3,23 +3,27 @@
     .version = "0.0.0",
     .dependencies = .{
         .sokol = .{
-            .url = "git+https://github.com/floooh/sokol-zig.git#7a1f685a29f7dbfe8ce0fe23871d01d5b29a6d0e",
-            .hash = "1220fd8800b4fe7a38d4778b8288f55eb451c8167b200c02e73068244d9ccefe3395",
+            .url = "git+https://github.com/ousttrue/sokol-zig.git#832406c9096ffa73b7082c81bf653fa613f7467a",
+            .hash = "1220e2f2b5b9b4abafaaf3785c262d8da11fb3a5376ebe10c46363d225e95545effa",
         },
+        // .cimgui = .{
+        //     .path = "deps/cimgui",
+        // },
         .cimgui = .{
-            .path = "deps/cimgui",
+            .url = "git+https://github.com/floooh/dcimgui.git#9356c08eb4d1d320e79e418a36d59a427627634a",
+            .hash = "1220c640ad23d8800437166865e54f172c612fcfe6e000149a2b2af631c37b605f50",
         },
         .@"sokol-tools-bin" = .{
-            .url = "git+https://github.com/floooh/sokol-tools-bin.git#8cc8c257380c9a5e230a84aeebf09cd500903fbc",
-            .hash = "12200f5129c997728160ab584adcc939b9dbca6f802d7273f386dad777de85e80421",
+            .url = "git+https://github.com/floooh/sokol-tools-bin.git#c37e6630a1a55141d813eae2bf17b6ef93e9867c",
+            .hash = "122007ff9e979a63058e3af1de1d8b98957baa741a8b779d50f9b251dca4acf60b41",
         },
         .rowmath = .{
-            .url = "git+https://github.com/ousttrue/rowmath.git#5ec6007ce7969d31000b89280c16a997fed6c6bd",
-            .hash = "1220f1379331d08475352530d763a9cd249e6851e6d699a6bebafea8c2e6b925ea73",
+            .url = "git+https://github.com/ousttrue/rowmath.git#b1d82f097e94d1eaa2c8b18180f10553e8dc45db",
+            .hash = "12209a003f1b957dc95faabf008bb53048de40324e8f3b1c8fcbf4933dc481844885",
         },
         .@"emsdk-zig" = .{
-            .url = "git+https://github.com/ousttrue/emsdk-zig.git#4b3df5dc7824514a3ef99c1dee77ee3087019050",
-            .hash = "122062b769fe74a24375a9409bce954bdd378f79b4b9fd2adf7a23360634cf5ad55c",
+            .url = "git+https://github.com/ousttrue/emsdk-zig.git#9b937b26b79c42fae3a6a8d9c156f02ca612480d",
+            .hash = "1220ae63c6f473c034d9ba811e85fe918f85ae3020f33d2ee6b067c05954c72e7aec",
         },
         .stb_image = .{
             .path = "sokol_examples/libs/stb",

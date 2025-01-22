@@ -24,11 +24,11 @@ const state = struct {
     var pos: [MAX_PARTICLES]Vec3 = undefined;
     var vel: [MAX_PARTICLES]Vec3 = undefined;
 
-    var rand: std.rand.Xoshiro256 = undefined;
+    var rand: std.Random.Xoshiro256 = undefined;
 };
 
 export fn init() void {
-    state.rand = std.rand.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
+    state.rand = std.Random.DefaultPrng.init(@intCast(std.time.milliTimestamp()));
 
     sg.setup(.{
         .environment = sokol.glue.environment(),
@@ -92,9 +92,9 @@ export fn init() void {
     };
     //             // vertex buffer at slot 1 must step per instance
     pip_desc.layout.buffers[1].step_func = .PER_INSTANCE;
-    pip_desc.layout.attrs[shader.ATTR_vs_pos] = .{ .format = .FLOAT3, .buffer_index = 0 };
-    pip_desc.layout.attrs[shader.ATTR_vs_color0] = .{ .format = .FLOAT4, .buffer_index = 0 };
-    pip_desc.layout.attrs[shader.ATTR_vs_inst_pos] = .{ .format = .FLOAT3, .buffer_index = 1 };
+    pip_desc.layout.attrs[shader.ATTR_instancing_pos] = .{ .format = .FLOAT3, .buffer_index = 0 };
+    pip_desc.layout.attrs[shader.ATTR_instancing_color0] = .{ .format = .FLOAT4, .buffer_index = 0 };
+    pip_desc.layout.attrs[shader.ATTR_instancing_inst_pos] = .{ .format = .FLOAT3, .buffer_index = 1 };
     state.pip = sg.makePipeline(pip_desc);
 }
 
@@ -157,7 +157,7 @@ export fn frame() void {
     const view_proj = view.mul(proj);
     state.ry += 60.0 * frame_time;
     const vs_params = shader.VsParams{
-        .mvp = Mat4.rotate(
+        .mvp = Mat4.makeRotation(
             state.ry,
             .{ .x = 0.0, .y = 1.0, .z = 0.0 },
         ).mul(view_proj).m,
@@ -170,7 +170,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+    sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 24, @intCast(state.cur_num_particles));
     dbgui.draw();
     sg.endPass();

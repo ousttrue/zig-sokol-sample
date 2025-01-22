@@ -158,8 +158,8 @@ export fn frame() void {
     const t = sokol.app.frameDuration() * 60.0;
     state.rx += @floatCast(1.0 * t);
     state.ry += @floatCast(2.0 * t);
-    const rxm = Mat4.rotate(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = Mat4.rotate(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = Mat4.makeRotation(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = Mat4.makeRotation(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const rm = rxm.mul(rym);
 
     // render shapes...
@@ -174,9 +174,9 @@ export fn frame() void {
     });
     for (0..@intFromEnum(ShapeType.NUM_SHAPES)) |i| {
         // per shape model-view-projection matrix
-        const model = rm.mul(Mat4.translate(state.shapes[i].pos));
+        const model = rm.mul(Mat4.makeTranslation(state.shapes[i].pos));
         state.vs_params.mvp = model.mul(view_proj).m;
-        sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&state.vs_params));
+        sg.applyUniforms(shader.UB_vs_params, sg.asRange(&state.vs_params));
         sg.draw(state.shapes[i].draw.base_element, state.shapes[i].draw.num_elements, 1);
     }
     sokol.debugtext.draw();

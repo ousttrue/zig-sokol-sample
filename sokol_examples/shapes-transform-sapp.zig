@@ -68,7 +68,7 @@ export fn init() void {
     buf.indices.buffer = sokol.shape.asRange(&indices);
 
     // transform matrices for the shapes
-    const box_transform = rowmath.Mat4.translate(.{ .x = -1.0, .y = 0.0, .z = 1.0 });
+    const box_transform = rowmath.Mat4.makeTranslation(.{ .x = -1.0, .y = 0.0, .z = 1.0 });
     // const sphere_transform = rowmath.Mat4.translate(.{ .x = 1.0, .y = 0.0, .z = 1.0 });
     // const cylinder_transform = rowmath.Mat4.translate(.{ .x = -1.0, .y = 0.0, .z = -1.0 });
     // const torus_transform = rowmath.Mat4.translate(.{ .x = 1.0, .y = 0.0, .z = -1.0 });
@@ -148,8 +148,8 @@ export fn frame() void {
         .{ .x = 0.0, .y = 1.0, .z = 0.0 },
     );
     const view_proj = view.mul(proj);
-    const rxm = rowmath.Mat4.rotate(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = rowmath.Mat4.rotate(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = rowmath.Mat4.makeRotation(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = rowmath.Mat4.makeRotation(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = rxm.mul(rym);
     state.vs_params.mvp = model.mul(view_proj).m;
 
@@ -160,7 +160,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shd.SLOT_vs_params, sg.asRange(&state.vs_params));
+    sg.applyUniforms(shd.UB_vs_params, sg.asRange(&state.vs_params));
     sg.draw(state.elms.base_element, state.elms.num_elements, 1);
 
     // render help text and finish frame

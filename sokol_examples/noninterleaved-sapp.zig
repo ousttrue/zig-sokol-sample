@@ -109,8 +109,8 @@ export fn frame() void {
     const view_proj = view.mul(proj);
     state.rx += 1.0 * t;
     state.ry += 2.0 * t;
-    const rxm = Mat4.rotate(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
-    const rym = Mat4.rotate(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
+    const rxm = Mat4.makeRotation(state.rx, .{ .x = 1.0, .y = 0.0, .z = 0.0 });
+    const rym = Mat4.makeRotation(state.ry, .{ .x = 0.0, .y = 1.0, .z = 0.0 });
     const model = rxm.mul(rym);
     var vs_params = shader.VsParams{
         .mvp = model.mul(view_proj).m,
@@ -122,7 +122,7 @@ export fn frame() void {
     });
     sg.applyPipeline(state.pip);
     sg.applyBindings(state.bind);
-    sg.applyUniforms(.VS, shader.SLOT_vs_params, sg.asRange(&vs_params));
+    sg.applyUniforms(shader.UB_vs_params, sg.asRange(&vs_params));
     sg.draw(0, 36, 1);
     dbgui.draw();
     sg.endPass();
