@@ -48,16 +48,16 @@ fn render_file_content() void {
     const bytes_per_line = 16; // keep this 2^N
     const num_lines = @divTrunc((state.size + (bytes_per_line - 1)), bytes_per_line);
 
-    _ = ig.igBeginChild_Str(
+    _ = ig.igBeginChild(
         "##scrolling",
         .{ .x = 0, .y = 0 },
         0,
         ig.ImGuiWindowFlags_NoMove | ig.ImGuiWindowFlags_NoNav,
     );
-    const clipper = ig.ImGuiListClipper_ImGuiListClipper();
-    ig.ImGuiListClipper_Begin(clipper, num_lines, ig.igGetTextLineHeight());
-    _ = ig.ImGuiListClipper_Step(clipper);
-    for (@intCast(clipper.*.DisplayStart)..@intCast(clipper.*.DisplayEnd)) |line_i| {
+    var clipper = ig.ImGuiListClipper{};
+    ig.ImGuiListClipper_Begin(&clipper, num_lines, ig.igGetTextLineHeight());
+    _ = ig.ImGuiListClipper_Step(&clipper);
+    for (@intCast(clipper.DisplayStart)..@intCast(clipper.DisplayEnd)) |line_i| {
         const start_offset = line_i * bytes_per_line;
         var end_offset = start_offset + bytes_per_line;
         if (end_offset >= state.size) {
@@ -65,13 +65,13 @@ fn render_file_content() void {
         }
         ig.igText("%04X: ", start_offset);
         for (start_offset..end_offset) |i| {
-            ig.igSameLine(0.0, 0.0);
+            ig.igSameLine();
             ig.igText("%02X ", state.buffer[i]);
         }
-        ig.igSameLine((6 * 7.0) + (bytes_per_line * 3 * 7.0) + (2 * 7.0), 0.0);
+        ig.igSameLineEx((6 * 7.0) + (bytes_per_line * 3 * 7.0) + (2 * 7.0), 0.0);
         for (start_offset..end_offset) |i| {
             if (i != start_offset) {
-                ig.igSameLine(0.0, 0.0);
+                ig.igSameLine();
             }
             var c = state.buffer[i];
             if ((c < 32) or (c > 127)) {
@@ -81,8 +81,7 @@ fn render_file_content() void {
         }
     }
     ig.igText("EOF\n");
-    ig.ImGuiListClipper_End(clipper);
-    ig.ImGuiListClipper_destroy(clipper);
+    ig.ImGuiListClipper_End(&clipper);
     ig.igEndChild();
 }
 
@@ -100,7 +99,7 @@ export fn frame() void {
         .dpi_scale = sokol.app.dpiScale(),
     });
 
-    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once, .{ .x = 0, .y = 0 });
+    ig.igSetNextWindowPos(.{ .x = 10, .y = 10 }, ig.ImGuiCond_Once);
     ig.igSetNextWindowSize(.{ .x = 600, .y = 500 }, ig.ImGuiCond_Once);
     _ = ig.igBegin("Drop a file!", 0, 0);
     if (state.load_state != .UNKNOWN) {
