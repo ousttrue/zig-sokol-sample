@@ -1,6 +1,6 @@
 //------------------------------------------------------------------------------
-//  triangle-sapp.c
-//  Simple 2D rendering from vertex buffer.
+// https://github.com/floooh/sokol-samples/blob/master/sapp/triangle-sapp.c
+// Simple 2D rendering from vertex buffer.
 //------------------------------------------------------------------------------
 const sokol = @import("sokol");
 const sg = sokol.gfx;

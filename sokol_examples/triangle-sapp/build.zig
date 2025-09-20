@@ -15,7 +15,7 @@ pub fn build(b: *std.Build) !void {
     dbgui.addImport("sokol", sokol);
 
     const mod = b.createModule(.{
-        .root_source_file = b.path("clear-sapp.zig"),
+        .root_source_file = b.path("triangle-sapp.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
@@ -26,8 +26,11 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "clear-sapp",
+        .name = "triangle-sapp",
         .mod = mod,
+        .shaders = &.{
+            "triangle-sapp.glsl",
+        },
     };
     if (target.result.cpu.arch.isWasm()) {
         try examples_build.buildWeb(b, examples_dep, opts);
