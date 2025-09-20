@@ -53,7 +53,7 @@ export fn init() void {
         .label = "vertex-buffer",
     });
     state.bind.index_buffer = sg.makeBuffer(.{
-        .type = .INDEXBUFFER,
+        .usage = .{ .index_buffer = true },
         .data = sg.asRange(&indices),
         .label = "index-buffer",
     });
