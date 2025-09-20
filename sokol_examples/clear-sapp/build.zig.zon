@@ -1,0 +1,14 @@
+.{
+    .name = .clear_sapp,
+    .version = "0.0.0",
+    .fingerprint = 0x65cb1e447871fd1b, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+    .paths = .{
+        "",
+    },
+}

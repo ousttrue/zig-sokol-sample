@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  clear-sapp.c
+// https://github.com/floooh/sokol-samples/blob/master/sapp/clear-sapp.c
 //------------------------------------------------------------------------------
 const sokol = @import("sokol");
 const sg = sokol.gfx;
@@ -20,8 +20,9 @@ export fn init() void {
 }
 
 export fn frame() void {
-    const g = pass_action.colors[0].clear_value.g + 0.01;
-    pass_action.colors[0].clear_value.g = if (g > 1.0) 0.0 else g;
+    const dst = &pass_action.colors[0].clear_value.b;
+    const g = dst.* + 0.01;
+    dst.* = if (g > 1.0) 0.0 else g;
     sg.beginPass(.{
         .action = pass_action,
         .swapchain = sokol.glue.swapchain(),
@@ -41,7 +42,7 @@ pub fn main() void {
         .init_cb = init,
         .frame_cb = frame,
         .cleanup_cb = cleanup,
-        // .event_cb = __dbgui_event,
+        .event_cb = dbgui.event,
         .width = 400,
         .height = 300,
         .window_title = "Clear (sokol app)",

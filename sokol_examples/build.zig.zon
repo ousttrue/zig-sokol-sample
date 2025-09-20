@@ -1,0 +1,23 @@
+.{
+    .name = .sokol_examples,
+    .version = "0.0.0",
+    .fingerprint = 0x8c1852bf974ed948, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{
+        .sokol = .{
+            .url = "git+https://github.com/floooh/sokol-zig.git#f54f1b00aa2b2421f06422bd35a0930ff0b17197",
+            .hash = "sokol-0.1.0-pb1HKxdSLgC1cy3VKT18XqI35Yg_V5z7g090GkYtfBoV",
+        },
+        .cimgui = .{
+            .url = "git+https://github.com/floooh/dcimgui.git#581c2e909c899c21923c779d4c41ea56ab93bbb4",
+            .hash = "cimgui-0.1.0-44ClkQ14kwAiwcr3ioDjxvPuiWQctWrt-tIFtsfP6xmU",
+        },
+        .@"emsdk-zig" = .{
+            .url = "git+https://github.com/ousttrue/emsdk-zig.git#098715d16c875e1c36f27e49db48e7c5f357a57f",
+            .hash = "emsdk_zig-0.0.0-caLXQb5AAACY2sja0G9N83fy5dT4yeVHccNbKlYyMvmU",
+        },
+    },
+    .paths = .{
+        "",
+    },
+}
