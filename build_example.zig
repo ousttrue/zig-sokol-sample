@@ -14,11 +14,6 @@ pub const Example = struct {
 
 pub const examples = [_]Example{
     .{
-        .name = "quad",
-        .root_source = "sokol_examples/quad-sapp.zig",
-        .shader = "sokol_examples/quad-sapp.glsl",
-    },
-    .{
         .name = "bufferoffsets",
         .root_source = "sokol_examples/bufferoffsets-sapp.zig",
         .shader = "sokol_examples/bufferoffsets-sapp.glsl",

@@ -36,7 +36,7 @@ export fn init() void {
     // an index buffer with 2 triangles
     const indices = [_]u16{ 0, 1, 2, 0, 2, 3 };
     state.bind.index_buffer = sg.makeBuffer(.{
-        .type = .INDEXBUFFER,
+        .usage = .{ .index_buffer = true },
         .data = sg.asRange(&indices),
         .label = "quad-indices",
     });
@@ -57,7 +57,7 @@ export fn init() void {
     // default pass action
     state.pass_action.colors[0] = .{
         .load_action = .CLEAR,
-        .clear_value = .{ .r=0.0, .g=0.0, .b=0.0, .a=1.0 },
+        .clear_value = .{ .r = 0.0, .g = 0.0, .b = 0.0, .a = 1.0 },
     };
 }
 
