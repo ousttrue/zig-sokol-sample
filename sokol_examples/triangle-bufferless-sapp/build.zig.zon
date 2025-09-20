@@ -1,0 +1,12 @@
+.{
+    .name = .triangle_bufferless_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x21e6595d003e368,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}

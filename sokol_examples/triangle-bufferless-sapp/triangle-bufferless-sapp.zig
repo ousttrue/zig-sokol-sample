@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  triangle-bufferless-sapp.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/triangle-bufferless-sapp.c
 //
 //  Rendering a triangle without buffers (instead define the vertex data
 //  as constants in the shader).

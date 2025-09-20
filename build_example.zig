@@ -14,11 +14,6 @@ pub const Example = struct {
 
 pub const examples = [_]Example{
     .{
-        .name = "triangle-bufferless",
-        .root_source = "sokol_examples/triangle-bufferless-sapp.zig",
-        .shader = "sokol_examples/triangle-bufferless-sapp.glsl",
-    },
-    .{
         .name = "quad",
         .root_source = "sokol_examples/quad-sapp.zig",
         .shader = "sokol_examples/quad-sapp.glsl",
