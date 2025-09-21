@@ -14,11 +14,6 @@ pub const Example = struct {
 
 pub const examples = [_]Example{
     .{
-        .name = "noninterleaved",
-        .root_source = "sokol_examples/noninterleaved-sapp.zig",
-        .shader = "sokol_examples/noninterleaved-sapp.glsl",
-    },
-    .{
         .name = "texcube",
         .root_source = "sokol_examples/texcube-sapp.zig",
         .shader = "sokol_examples/texcube-sapp.glsl",

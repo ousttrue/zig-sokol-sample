@@ -1,0 +1,10 @@
+.{
+    .name = .noninterleaved_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x96bf0452b6c1f330,
+    .dependencies = .{
+        .examples = .{ .path = ".." },
+    },
+}
