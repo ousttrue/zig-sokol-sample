@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  instancing.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/instancing-sapp.c
 //  Demonstrate simple hardware-instancing using a static geometry buffer
 //  and a dynamic instance-data buffer.
 //------------------------------------------------------------------------------
@@ -64,7 +64,7 @@ export fn init() void {
         5, 1, 2, 5, 2, 3, 5, 3, 4, 5, 4, 1,
     };
     state.bind.index_buffer = sg.makeBuffer(.{
-        .type = .INDEXBUFFER,
+        .usage = .{ .index_buffer = true },
         .data = sg.asRange(&indices),
         .label = "geometry-indices",
     });
@@ -72,7 +72,7 @@ export fn init() void {
     // empty, dynamic instance-data vertex buffer, goes into vertex-buffer-slot 1
     state.bind.vertex_buffers[1] = sg.makeBuffer(.{
         .size = MAX_PARTICLES * @sizeOf(Vec3),
-        .usage = .STREAM,
+        .usage = .{ .stream_update = true },
         .label = "instance-data",
     });
 

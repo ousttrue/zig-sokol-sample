@@ -13,12 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    // - [ ] [offscreen-msaa](sokol_examples/offscreen-msaa-sapp.zig)
-    .{
-        .name = "instancing",
-        .root_source = "sokol_examples/instancing-sapp.zig",
-        .shader = "sokol_examples/instancing-sapp.glsl",
-    },
     // - [ ] [instancing-pull](sokol_examples/instancing-pull-sapp.zig)
     // - [ ] [mrt](sokol_examples/mrt-sapp.zig)
     // - [ ] [mrt-pixelformats](sokol_examples/mrt-pixelformats-sapp.zig)

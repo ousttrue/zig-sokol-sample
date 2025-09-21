@@ -1,0 +1,12 @@
+.{
+    .name = .instancing_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x4b0bac26df483340,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}
