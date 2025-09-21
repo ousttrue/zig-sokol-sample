@@ -70,6 +70,7 @@ fn generateShaders(
     examples_dep: *std.Build.Dependency,
     shaders: []const []const u8,
     compile: *std.Build.Step.Compile,
+    isWasm: bool,
 ) !void {
     // extract shdc dependency from sokol dependency
     const sokol_dep = examples_dep.builder.dependency("sokol", .{});
@@ -80,10 +81,13 @@ fn generateShaders(
             .shdc_dep = shdc_dep,
             .input = shader,
             .output = b.fmt("{s}.zig", .{shader}),
-            .slang = .{
-                // .glsl430 = true,
-                .hlsl5 = true,
-            },
+            .slang = if (isWasm)
+                .{ .glsl300es = true }
+            else
+                .{
+                    // .glsl430 = true,
+                    .hlsl5 = true,
+                },
         });
         // add the shader compilation step as dependency to the build step
         // which requires the generated Zig source file
@@ -99,7 +103,7 @@ pub fn buildNative(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Opt
     });
     b.installArtifact(exe);
 
-    try generateShaders(b, examples_dep, opts.shaders, exe);
+    try generateShaders(b, examples_dep, opts.shaders, exe, false);
 
     const run = b.addRunArtifact(exe);
     b.step("run", "run").dependOn(&run.step);
@@ -111,7 +115,7 @@ pub fn buildWeb(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Option
         .name = opts.name,
         .root_module = opts.mod,
     });
-    try generateShaders(b, examples_dep, opts.shaders, lib);
+    try generateShaders(b, examples_dep, opts.shaders, lib, true);
 
     const emsdk_zig = examples_dep.builder.dependency("emsdk-zig", .{});
     const emsdk_dep = emsdk_zig.builder.dependency("emsdk", .{});
