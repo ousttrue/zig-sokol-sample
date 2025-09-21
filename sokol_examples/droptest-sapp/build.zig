@@ -17,7 +17,7 @@ pub fn build(b: *std.Build) !void {
     dbgui.addImport("sokol", sokol);
 
     const mod = b.createModule(.{
-        .root_source_file = b.path("mipmap-sapp.zig"),
+        .root_source_file = b.path("droptest-sapp.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
@@ -30,10 +30,9 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "mipmap-sapp",
+        .name = "droptest-sapp",
         .mod = mod,
         .shaders = &.{
-            "mipmap-sapp.glsl",
         },
     };
     if (target.result.cpu.arch.isWasm()) {

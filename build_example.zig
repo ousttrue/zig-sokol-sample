@@ -13,33 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    // - [ ] [uniformtypes](sokol_examples/uniformtypes-sapp.zig)
-    // - [ ] [blend](sokol_examples/blend-sapp.zig)
-    // - [ ] [sdf](sokol_examples/sdf-sapp.zig)
-    // - [ ] [shadows](sokol_examples/shadows-sapp.zig)
-    // - [ ] [shadows-depthtex](sokol_examples/shadows-depthtex-sapp.zig)
-    // - [ ] [imgui](sokol_examples/imgui-sapp.zig)
-    // - [ ] [imgui-dock](sokol_examples/imgui-dock-sapp.zig)
-    // - [ ] [imgui-highdpi](sokol_examples/imgui-highdpi-sapp.zig)
-    // - [ ] [cimgui](sokol_examples/cimgui-sapp.zig)
-    // - [ ] [imgui-images](sokol_examples/imgui-images-sapp.zig)
-    // - [ ] [imgui-usercallback](sokol_examples/imgui-usercallback-sapp.zig)
-    // - [ ] [nuklear](sokol_examples/nuklear-sapp.zig)
-    // - [ ] [nuklear-images](sokol_examples/nuklear-images-sapp.zig)
-    // - [ ] [sgl-microui](sokol_examples/sgl-microui-sapp.zig)
-    // - [ ] [fontstash](sokol_examples/fontstash-sapp.zig)
-    // - [ ] [fontstash-layers](sokol_examples/fontstash-layers-sapp.zig)
-    // - [ ] [debugtext](sokol_examples/debugtext-sapp.zig)
-    // - [ ] [debugtext-printf](sokol_examples/debugtext-printf-sapp.zig)
-    // - [ ] [debugtext-userfont](sokol_examples/debugtext-userfont-sapp.zig)
-    // - [ ] [debugtext-context](sokol_examples/debugtext-context-sapp.zig)
-    // - [ ] [debugtext-layers](sokol_examples/debugtext-layers-sapp.zig)
-    // - [ ] [events](sokol_examples/events-sapp.zig)
-    // - [ ] [icon](sokol_examples/icon-sapp.zig)
-    .{
-        .name = "droptest",
-        .root_source = "sokol_examples/droptest-sapp.zig",
-    },
     // - [ ] [pixelformats](sokol_examples/pixelformats-sapp.zig)
     // - [ ] [drawcallperf](sokol_examples/drawcallperf-sapp.zig)
     // - [ ] [saudio](sokol_examples/saudio-sapp.zig)

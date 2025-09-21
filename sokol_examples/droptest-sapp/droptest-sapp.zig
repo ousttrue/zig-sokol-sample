@@ -34,7 +34,7 @@ export fn init() void {
 
     // on native platforms, use sokol_fetch.h to load the dropped-file content,
     // on web, sokol_app.h has a builtin helper function for this
-    if (!builtin.target.isWasm()) {
+    if (!builtin.target.cpu.arch.isWasm()) {
         sokol.fetch.setup(.{
             .num_channels = 1,
             .num_lanes = 1,
@@ -86,7 +86,7 @@ fn render_file_content() void {
 }
 
 export fn frame() void {
-    if (!builtin.target.isWasm()) {
+    if (!builtin.target.cpu.arch.isWasm()) {
         sokol.fetch.dowork();
     }
 
@@ -127,7 +127,7 @@ export fn frame() void {
 }
 
 export fn cleanup() void {
-    if (!builtin.target.isWasm()) {
+    if (!builtin.target.cpu.arch.isWasm()) {
         sokol.fetch.shutdown();
     }
     simgui.shutdown();
@@ -137,7 +137,7 @@ export fn cleanup() void {
 export fn input(ev: [*c]const sokol.app.Event) void {
     _ = simgui.handleEvent(ev.*);
     if (ev.*.type == .FILES_DROPPED) {
-        if (builtin.target.isWasm()) {
+        if (builtin.target.cpu.arch.isWasm()) {
             const is_wasm = struct {
                 // the async-loading callback for sapp_html5_fetch_dropped_file
                 export fn emsc_load_callback(
