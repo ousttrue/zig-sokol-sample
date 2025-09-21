@@ -13,8 +13,8 @@
             .hash = "cimgui-0.1.0-44ClkQ14kwAiwcr3ioDjxvPuiWQctWrt-tIFtsfP6xmU",
         },
         .@"emsdk-zig" = .{
-            .url = "git+https://github.com/ousttrue/emsdk-zig.git#098715d16c875e1c36f27e49db48e7c5f357a57f",
-            .hash = "emsdk_zig-0.0.0-caLXQb5AAACY2sja0G9N83fy5dT4yeVHccNbKlYyMvmU",
+            .url = "git+https://github.com/ousttrue/emsdk-zig.git#44e70d5d854273afed6d6c5e5c85d8f011ca6e0c",
+            .hash = "emsdk_zig-0.0.0-caLXQahAAACXnFVWQ4vt2aVulxU3GVCYVu1GvbLHClpx",
         },
         .rowmath = .{
             .url = "git+https://github.com/ousttrue/rowmath.git#27d0f07e3f96d741c752b32e72284d64a7c2c72f",

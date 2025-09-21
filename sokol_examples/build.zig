@@ -110,6 +110,8 @@ pub fn buildWeb(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Option
     examples_dep.artifact("sokol_clib").addSystemIncludePath(sysroot);
     examples_dep.artifact(cimgui_conf.clib_name).addSystemIncludePath(sysroot);
 
+    const sokol_dep = examples_dep.builder.dependency("sokol", .{});
+
     // create a build step which invokes the Emscripten linker
     const link_step = try emsdk_build.emLinkStep(b, emsdk_dep, .{
         .lib_main = lib,
@@ -118,7 +120,7 @@ pub fn buildWeb(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Option
         .use_webgl2 = true,
         .use_emmalloc = true,
         .use_filesystem = false,
-        // .shell_file_path = opts.dep_sokol.path("src/sokol/web/shell.html"),
+        .shell_file_path = sokol_dep.path("src/sokol/web/shell.html"),
     });
     // attach Emscripten linker output to default install step
     b.getInstallStep().dependOn(&link_step.step);
