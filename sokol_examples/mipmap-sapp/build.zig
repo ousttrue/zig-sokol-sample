@@ -30,7 +30,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "mipmap-sapp",
+        .name = "mipmap",
         .mod = mod,
         .shaders = &.{
             "mipmap-sapp.glsl",

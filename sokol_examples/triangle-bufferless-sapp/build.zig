@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "triangle-bufferless-sapp",
+        .name = "triangle-bufferless",
         .mod = mod,
         .shaders = &.{
             "triangle-bufferless-sapp.glsl",

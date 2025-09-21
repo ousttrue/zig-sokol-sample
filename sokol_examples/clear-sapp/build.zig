@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "clear-sapp",
+        .name = "clear",
         .mod = mod,
     };
     if (target.result.cpu.arch.isWasm()) {

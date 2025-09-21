@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "noninterleaved-sapp",
+        .name = "noninterleaved",
         .mod = mod,
         .shaders = &.{
             "noninterleaved-sapp.glsl",

@@ -30,7 +30,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "droptest-sapp",
+        .name = "droptest",
         .mod = mod,
         .shaders = &.{
         },

@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "shapes-sapp",
+        .name = "shapes",
         .mod = mod,
         .shaders = &.{
             "shapes-sapp.glsl",

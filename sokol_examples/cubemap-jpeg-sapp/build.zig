@@ -46,7 +46,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     const opts = examples_build.Options{
-        .name = "cubemap-jpeg-sapp",
+        .name = "cubemap-jpeg",
         .mod = mod,
         .shaders = &.{
             "cubemap-jpeg-sapp.glsl",

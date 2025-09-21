@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "instancing-sapp",
+        .name = "instancing",
         .mod = mod,
         .shaders = &.{
             "instancing-sapp.glsl",

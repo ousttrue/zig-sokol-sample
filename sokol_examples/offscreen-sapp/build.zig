@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "offscreen-sapp",
+        .name = "offscreen",
         .mod = mod,
         .shaders = &.{
             "offscreen-sapp.glsl",

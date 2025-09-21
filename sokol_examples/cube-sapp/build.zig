@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "cube-sapp",
+        .name = "cube",
         .mod = mod,
         .shaders = &.{
             "cube-sapp.glsl",

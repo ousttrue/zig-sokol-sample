@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "bufferoffsets-sapp",
+        .name = "bufferoffsets",
         .mod = mod,
         .shaders = &.{
             "bufferoffsets-sapp.glsl",

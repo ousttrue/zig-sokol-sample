@@ -30,7 +30,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "sgl-lines-sapp",
+        .name = "sgl-lines",
         .mod = mod,
         .shaders = &.{
         },

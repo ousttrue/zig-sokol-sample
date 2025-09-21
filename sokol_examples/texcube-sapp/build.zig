@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "texcube-sapp",
+        .name = "texcube",
         .mod = mod,
         .shaders = &.{
             "texcube-sapp.glsl",

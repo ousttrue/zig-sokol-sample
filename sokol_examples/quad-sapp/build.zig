@@ -26,7 +26,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     const opts = examples_build.Options{
-        .name = "quad-sapp",
+        .name = "quad",
         .mod = mod,
         .shaders = &.{
             "quad-sapp.glsl",
