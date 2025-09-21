@@ -1,0 +1,12 @@
+.{
+    .name = .sgl_lines_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0xad8fb8246eebdb71,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}

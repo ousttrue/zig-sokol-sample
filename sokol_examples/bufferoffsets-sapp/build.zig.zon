@@ -1,0 +1,12 @@
+.{
+    .name = .bufferoffsets_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0xc2d0ec8072514d17,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}

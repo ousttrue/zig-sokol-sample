@@ -37,10 +37,7 @@ jobs:
       - name: build Wasm
         run: |
           sudo apt install meson ninja-build
-          zig build --summary all -Dtarget=wasm32-emscripten -Doptimize=ReleaseSmall
-          find zig-out
-          mkdir -p public
-          cp -rp zig-out/web public/wasm
+          sh build.sh
       - name: start http
         run: |
           npm install

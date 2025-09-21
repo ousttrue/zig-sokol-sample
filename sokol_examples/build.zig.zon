@@ -1,0 +1,30 @@
+.{
+    .name = .sokol_examples,
+    .version = "0.0.0",
+    .fingerprint = 0x8c1852bf974ed948, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.15.1",
+    .dependencies = .{
+        .sokol = .{
+            .url = "git+https://github.com/floooh/sokol-zig.git#f54f1b00aa2b2421f06422bd35a0930ff0b17197",
+            .hash = "sokol-0.1.0-pb1HKxdSLgC1cy3VKT18XqI35Yg_V5z7g090GkYtfBoV",
+        },
+        .cimgui = .{
+            .url = "git+https://github.com/floooh/dcimgui.git#581c2e909c899c21923c779d4c41ea56ab93bbb4",
+            .hash = "cimgui-0.1.0-44ClkQ14kwAiwcr3ioDjxvPuiWQctWrt-tIFtsfP6xmU",
+        },
+        .@"emsdk-zig" = .{
+            .url = "git+https://github.com/ousttrue/emsdk-zig.git#44e70d5d854273afed6d6c5e5c85d8f011ca6e0c",
+            .hash = "emsdk_zig-0.0.0-caLXQahAAACXnFVWQ4vt2aVulxU3GVCYVu1GvbLHClpx",
+        },
+        .rowmath = .{
+            .url = "git+https://github.com/ousttrue/rowmath.git#27d0f07e3f96d741c752b32e72284d64a7c2c72f",
+            .hash = "rowmath-0.0.0-LTUpSYRABACYW5NWbev_B-ke4k5tLd7_8nsZGbewovk3",
+        },
+        .stb_image = .{
+            .path = "libs/stb",
+        },
+    },
+    .paths = .{
+        "",
+    },
+}

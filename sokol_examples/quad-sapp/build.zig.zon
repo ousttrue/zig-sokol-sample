@@ -1,0 +1,12 @@
+.{
+    .name = .quad_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0xae23a864addcbae3,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}
