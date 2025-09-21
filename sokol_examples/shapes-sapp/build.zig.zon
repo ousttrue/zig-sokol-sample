@@ -1,0 +1,12 @@
+.{
+    .name = .shapes_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x88e1277519d623f0,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}

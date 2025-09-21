@@ -13,13 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    // - [ ] [vertexpull](sokol_examples/vertexpull-sapp.zig)
-    // - [ ] [sbuftex](sokol_examples/sbuftex-sapp.zig)
-    .{
-        .name = "shapes",
-        .root_source = "sokol_examples/shapes-sapp.zig",
-        .shader = "sokol_examples/shapes-sapp.glsl",
-    },
     .{
         .name = "shapes-transform",
         .root_source = "sokol_examples/shapes-transform-sapp.zig",
