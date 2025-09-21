@@ -50,7 +50,7 @@ fn grid(y: f32, frame_count: f32) void {
         sokol.gl.v3f(x, y, 0.0);
     }
     for (0..num) |i| {
-        const z = z_offset + @as(f32, @floatFromInt(i)) * dist - num * dist;
+        const z = @as(f32, @floatFromInt(z_offset)) + @as(f32, @floatFromInt(i)) * dist - num * dist;
         sokol.gl.v3f(-num * dist * 0.5, y, z);
         sokol.gl.v3f(num * dist * 0.5, y, z);
     }
