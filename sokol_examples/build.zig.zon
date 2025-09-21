@@ -16,6 +16,10 @@
             .url = "git+https://github.com/ousttrue/emsdk-zig.git#098715d16c875e1c36f27e49db48e7c5f357a57f",
             .hash = "emsdk_zig-0.0.0-caLXQb5AAACY2sja0G9N83fy5dT4yeVHccNbKlYyMvmU",
         },
+        .rowmath = .{
+            .url = "git+https://github.com/ousttrue/rowmath.git#27d0f07e3f96d741c752b32e72284d64a7c2c72f",
+            .hash = "rowmath-0.0.0-LTUpSYRABACYW5NWbev_B-ke4k5tLd7_8nsZGbewovk3",
+        },
     },
     .paths = .{
         "",

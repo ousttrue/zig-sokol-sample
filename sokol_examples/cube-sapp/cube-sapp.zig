@@ -69,7 +69,7 @@ export fn init() void {
         22, 21, 20, 23, 22, 20,
     };
     state.bind.index_buffer = sg.makeBuffer(.{
-        .type = .INDEXBUFFER,
+        .usage = .{ .index_buffer = true },
         .data = sg.asRange(&indices),
         .label = "cube-indices",
     });

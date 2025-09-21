@@ -35,6 +35,13 @@ pub fn build(b: *std.Build) void {
     const cimgui = cimgui_dep.module(cimgui_conf.module_name);
     b.modules.put("cimgui", cimgui) catch @panic("OOM");
     b.installArtifact(cimgui_dep.artifact(cimgui_conf.clib_name));
+
+    const rowmath_dep = b.dependency("rowmath", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const rowmath = rowmath_dep.module("rowmath");
+    b.modules.put("rowmath", rowmath) catch @panic("OOM");
 }
 
 pub const Options = struct {

@@ -1,0 +1,12 @@
+.{
+    .name = .cube_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0xd6a10bab47feb3fe,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}
