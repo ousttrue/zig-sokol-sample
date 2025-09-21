@@ -20,6 +20,9 @@
             .url = "git+https://github.com/ousttrue/rowmath.git#27d0f07e3f96d741c752b32e72284d64a7c2c72f",
             .hash = "rowmath-0.0.0-LTUpSYRABACYW5NWbev_B-ke4k5tLd7_8nsZGbewovk3",
         },
+        .stb_image = .{
+            .path = "libs/stb",
+        },
     },
     .paths = .{
         "",

@@ -42,6 +42,12 @@ pub fn build(b: *std.Build) void {
     });
     const rowmath = rowmath_dep.module("rowmath");
     b.modules.put("rowmath", rowmath) catch @panic("OOM");
+
+    const stb_image_dep = b.dependency("stb_image", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(stb_image_dep.artifact("stb_image"));
 }
 
 pub const Options = struct {
@@ -88,7 +94,6 @@ pub fn buildNative(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Opt
 
     const run = b.addRunArtifact(exe);
     b.step("run", "run").dependOn(&run.step);
-
 }
 
 // for web builds, the Zig code needs to be built into a library and linked with the Emscripten linker

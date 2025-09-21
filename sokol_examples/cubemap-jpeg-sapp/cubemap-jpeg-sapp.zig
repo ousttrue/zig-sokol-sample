@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  cubemap-jpeg-sapp.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/cubemap-jpeg-sapp.c
 //
 //  Load and render cubemap from individual jpeg files.
 //------------------------------------------------------------------------------
@@ -13,7 +13,8 @@ const OrbitCamera = rowmath.OrbitCamera;
 const shader = @import("cubemap-jpeg-sapp.glsl.zig");
 const stb_image = @import("stb_image");
 
-const SG_CUBEFACE_NUM = @intFromEnum(sg.CubeFace.NUM);
+// const SG_CUBEFACE_NUM = @intFromEnum(sg.CubeFace.NUM);
+const NUM_FACES = 6;
 
 const state = struct {
     var allocator: std.mem.Allocator = undefined;
@@ -32,8 +33,8 @@ const FACE_WIDTH = 2048;
 const FACE_HEIGHT = 2048;
 const FACE_NUM_BYTES = FACE_WIDTH * FACE_HEIGHT * 4;
 
-fn cubeface_range(face_index: sg.CubeFace) []u8 {
-    const offset = @intFromEnum(face_index) * FACE_NUM_BYTES;
+fn cubeface_range(face_index: usize) []u8 {
+    const offset = face_index * FACE_NUM_BYTES;
     return state.pixels[@intCast(offset)..@intCast(offset + FACE_NUM_BYTES)];
 }
 
@@ -52,7 +53,7 @@ export fn init() void {
     sokol.debugtext.setup(debugtext_desc);
 
     // allocate memory for pixel data (both as io buffer for JPEG data, and for the decoded pixel data)
-    state.pixels = @ptrCast(state.allocator.alloc(u8, SG_CUBEFACE_NUM * FACE_NUM_BYTES) catch @panic("alloc pixels"));
+    state.pixels = @ptrCast(state.allocator.alloc(u8, NUM_FACES * FACE_NUM_BYTES) catch @panic("alloc pixels"));
 
     // pass action, clear to black
     state.pass_action.colors[0] = .{
@@ -104,10 +105,14 @@ export fn init() void {
         16, 17, 18, 16, 18, 19,
         22, 21, 20, 23, 22, 20,
     };
-    state.bind.index_buffer = sg.makeBuffer(.{ .type = .INDEXBUFFER, .data = sg.asRange(&indices), .label = "cubemap-indices" });
+    state.bind.index_buffer = sg.makeBuffer(.{
+        .usage = .{ .index_buffer = true },
+        .data = sg.asRange(&indices),
+        .label = "cubemap-indices",
+    });
 
     // allocate a texture handle, but initialize the texture later after data is loaded
-    state.bind.images[shader.IMG_tex] = sg.allocImage();
+    state.bind.views[shader.VIEW_tex] = sg.allocView();
 
     // a sampler object
     state.bind.samplers[shader.SMP_smp] = sg.makeSampler(.{
@@ -127,7 +132,7 @@ export fn init() void {
     state.pip = sg.makePipeline(pip_desc);
 
     // load 6 cubemap face image files (note: filenames are in same order as SG_CUBEFACE_*)
-    const filenames = [SG_CUBEFACE_NUM][:0]const u8{
+    const filenames = [NUM_FACES][:0]const u8{
         "nb2_posx.jpg", "nb2_negx.jpg",
         "nb2_posy.jpg", "nb2_negy.jpg",
         "nb2_posz.jpg", "nb2_negz.jpg",
@@ -137,16 +142,16 @@ export fn init() void {
     sokol.fetch.setup(.{
         .max_requests = 6,
         .num_channels = 1,
-        .num_lanes = SG_CUBEFACE_NUM,
+        .num_lanes = NUM_FACES,
         .logger = .{ .func = sokol.log.func },
     });
-    for (0..SG_CUBEFACE_NUM) |i| {
+    for (0..NUM_FACES) |i| {
         _ = sokol.fetch.send(.{
             .path = filenames[i],
             .callback = fetch_cb,
             .buffer = .{
-                .ptr = &cubeface_range(@enumFromInt(i))[0],
-                .size = cubeface_range(@enumFromInt(i)).len,
+                .ptr = &cubeface_range(i)[0],
+                .size = cubeface_range(i).len,
             },
         });
     }
@@ -173,7 +178,7 @@ export fn fetch_cb(response: [*c]const sokol.fetch.Response) void {
             std.debug.assert(height == FACE_HEIGHT);
             // overwrite JPEG data with decoded pixel data
             const decoded_pixels = _decoded_pixels[0..FACE_NUM_BYTES];
-            const dst: [*]u8 = @constCast(@ptrCast(response.*.buffer.ptr));
+            const dst: [*]u8 = @ptrCast(@constCast(response.*.buffer.ptr));
             std.mem.copyForwards(
                 u8,
                 dst[0..FACE_NUM_BYTES],
@@ -181,23 +186,32 @@ export fn fetch_cb(response: [*c]const sokol.fetch.Response) void {
             );
             // all 6 faces loaded?
             state.load_count += 1;
-            if (state.load_count == SG_CUBEFACE_NUM) {
-                var image_desc = sg.ImageDesc{
+            if (state.load_count == NUM_FACES) {
+                const image_desc = sg.ImageDesc{
                     .type = .CUBE,
                     .width = width,
                     .height = height,
                     .pixel_format = .RGBA8,
+                    .data = .{
+                        .mip_levels = [1]sg.Range{
+                            sg.asRange(state.pixels),
+                        } ++ [1]sg.Range{.{}} ** 15,
+                    },
                     .label = "cubemap-image",
                 };
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_X)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_X));
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_X)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_X));
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_Y)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_Y));
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Y)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Y));
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_Z));
-                image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Z));
-                sg.initImage(state.bind.images[shader.IMG_tex], image_desc);
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_X)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_X));
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_X)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_X));
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_Y)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_Y));
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Y)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Y));
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.POS_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.POS_Z));
+                // image_desc.data.subimage[@intFromEnum(sg.CubeFace.NEG_Z)][0] = sg.asRange(cubeface_range(sg.CubeFace.NEG_Z));
+                const img = sg.makeImage(image_desc);
                 state.allocator.free(state.pixels);
                 state.pixels = &.{};
+                sg.initView(state.bind.views[shader.VIEW_tex], .{
+                    .texture = .{ .image = img },
+                    .label = "cubemap-view",
+                });
             }
         }
     } else if (response.*.failed) {

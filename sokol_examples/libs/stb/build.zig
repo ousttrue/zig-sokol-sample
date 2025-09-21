@@ -4,14 +4,16 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .target = target,
-        .optimize = optimize,
+    const lib = b.addLibrary(.{
         .name = "stb_image",
-        .root_source_file = b.path("stb_image.zig"),
-        .link_libc = true,
+        .root_module = b.addModule("stb_image", .{
+            .target = target,
+            .optimize = optimize,
+            .root_source_file = b.path("stb_image.zig"),
+            .link_libc = true,
+        }),
     });
-    if (target.result.isWasm()) {
+    if (target.result.cpu.arch.isWasm()) {
         // use emscripten builtin stb_image
     } else {
         lib.addCSourceFiles(.{

@@ -1,0 +1,12 @@
+.{
+    .name = .cubemap_jpeg,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x74f2254efbbf46f1,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}
