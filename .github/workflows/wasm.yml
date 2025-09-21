@@ -37,7 +37,7 @@ jobs:
       - name: build Wasm
         run: |
           sudo apt install meson ninja-build
-          sh build.sh
+          bash build.sh
       - name: start http
         run: |
           npm install
