@@ -2,13 +2,20 @@
 
 sokol の zig binding を練習する。
 
-## dependencies
+- `zig-0.15.1`
+- `sokol-2025-09`
 
-- https://github.com/floooh/sokol-zig
-- https://github.com/floooh/sokol-tools
+zig と sokol のバージョンアップについていけるようにシンプル化。
+あと emsdk4。
+sokol の API breaking change が来た。
 
-- https://github.com/floooh/sokol-zig-imgui-sample/
+- [The sokol-gfx resource view update.](https://floooh.github.io/2025/08/17/sokol-gfx-view-update.html)
 
-## PORT
+## bun site
 
-- [x] https://github.com/ddiakopoulos/tinygizmo
+- package.json
+- docs/
+- src/
+- sokol_examples
+  - `*-sapp` sokolのサンプルビルド。
+  - `zig build -Dtarget=wasm32-emscripten` により `zig-out/web` に wasm を出力できる。
