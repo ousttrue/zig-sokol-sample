@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  texcube-sapp.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/texcube-sapp.c
 //  Texture creation, rendering with texture, packed vertex components.
 //------------------------------------------------------------------------------
 const std = @import("std");
@@ -83,7 +83,7 @@ export fn init() void {
         22, 21, 20, 23, 22, 20,
     };
     state.bind.index_buffer = sg.makeBuffer(.{
-        .type = .INDEXBUFFER,
+        .usage = .{ .index_buffer = true },
         .data = sg.asRange(&indices),
         .label = "texcube-indices",
     });
@@ -96,13 +96,22 @@ export fn init() void {
         0xFF000000, 0xFFFFFFFF, 0xFF000000, 0xFFFFFFFF,
     };
     // NOTE: SLOT_tex is provided by shader code generation
-    var img_desc = sg.ImageDesc{
+    const img_desc = sg.ImageDesc{
         .width = 4,
         .height = 4,
         .label = "texcube-texture",
+        .data = .{
+            .mip_levels = [1]sg.Range{sg.asRange(&pixels)} ++ [1]sg.Range{.{}} ** 15,
+        },
     };
-    img_desc.data.subimage[0][0] = sg.asRange(&pixels);
-    state.bind.images[shader.IMG_tex] = sg.makeImage(img_desc);
+    // img_desc.data.subimage[0][0] = sg.asRange(&pixels);
+    // img_desc.data.mip_levels[0] = ;
+    // state.bind.images[shader.IMG_tex] = sg.makeImage(img_desc);
+    const img = sg.makeImage(img_desc);
+    state.bind.views[shader.VIEW_tex] = sg.makeView(.{
+        .texture = .{ .image = img },
+        .label = "texcube-texture-view",
+    });
 
     // create a sampler object with default attributes
     state.bind.samplers[shader.SMP_smp] = sg.makeSampler(.{

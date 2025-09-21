@@ -1,0 +1,10 @@
+.{
+    .name = .texcube_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0xa82c9cf75d81dc07,
+    .dependencies = .{
+        .examples = .{ .path = ".." },
+    },
+}

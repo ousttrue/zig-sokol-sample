@@ -13,11 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    .{
-        .name = "texcube",
-        .root_source = "sokol_examples/texcube-sapp.zig",
-        .shader = "sokol_examples/texcube-sapp.glsl",
-    },
     // - [ ] [vertexpull](sokol_examples/vertexpull-sapp.zig)
     // - [ ] [sbuftex](sokol_examples/sbuftex-sapp.zig)
     .{
