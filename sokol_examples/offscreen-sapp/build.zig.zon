@@ -1,0 +1,12 @@
+.{
+    .name = .offscreen_sapp,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .paths = .{""},
+    .fingerprint = 0x6753b3a39408995c,
+    .dependencies = .{
+        .examples = .{
+            .path = "..",
+        },
+    },
+}

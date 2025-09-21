@@ -13,11 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    .{
-        .name = "offscreen",
-        .root_source = "sokol_examples/offscreen-sapp.zig",
-        .shader = "sokol_examples/offscreen-sapp.glsl",
-    },
     // - [ ] [offscreen-msaa](sokol_examples/offscreen-msaa-sapp.zig)
     .{
         .name = "instancing",

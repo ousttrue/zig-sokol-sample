@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  offscreen-sapp.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/offscreen-sapp.c
 //  Render to a offscreen rendertarget texture without multisampling, and
 //  use this texture for rendering to the display (with multisampling).
 //------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ export fn init() void {
     // because the offscreen pass uses a different sample count than the display render pass
     // (the display render pass is multi-sampled, the offscreen pass is not)
     var img_desc = sg.ImageDesc{
-        .render_target = true,
+        .usage = .{ .color_attachment = true },
         .width = 256,
         .height = 256,
         .pixel_format = OFFSCREEN_PIXEL_FORMAT,
@@ -58,20 +58,34 @@ export fn init() void {
         .label = "color-image",
     };
     const color_img = sg.makeImage(img_desc);
+
+    img_desc.usage = .{ .depth_stencil_attachment = true };
     img_desc.pixel_format = .DEPTH;
     img_desc.label = "depth-image";
     const depth_img = sg.makeImage(img_desc);
-    var attachments_desc = sg.AttachmentsDesc{
-        .depth_stencil = .{ .image = depth_img },
-        .label = "offscreen-attachments",
+
+    state.offscreen.pass = .{
+        .attachments = .{
+            .colors = [_]sg.View{
+                sg.makeView(.{
+                    .color_attachment = .{ .image = color_img },
+                    .label = "color-attachments",
+                }),
+                .{},
+                .{},
+                .{},
+            },
+            .depth_stencil = sg.makeView(.{
+                .depth_stencil_attachment = .{ .image = depth_img },
+                .label = "offscreen-attachments",
+            }),
+        },
+        .label = "offscreen-pass",
     };
-    attachments_desc.colors[0].image = color_img;
-    state.offscreen.pass.attachments = sg.makeAttachments(attachments_desc);
     state.offscreen.pass.action.colors[0] = .{
         .load_action = .CLEAR,
         .clear_value = .{ .r = 0.25, .g = 0.25, .b = 0.25, .a = 1.0 },
     };
-    state.offscreen.pass.label = "offscreen-pass";
 
     // a donut shape which is rendered into the offscreen render target, and
     // a sphere shape which is rendered into the default framebuffer
@@ -157,7 +171,10 @@ export fn init() void {
     // resource bindings to render a textured shape, using the offscreen render target as texture
     state.display.bind.vertex_buffers[0] = vbuf;
     state.display.bind.index_buffer = ibuf;
-    state.display.bind.images[shader.IMG_tex] = color_img;
+    state.display.bind.views[shader.VIEW_tex] = sg.makeView(.{
+        .texture = .{ .image = color_img },
+        .label = "texture-view",
+    });
     state.display.bind.samplers[shader.SMP_smp] = smp;
 }
 
