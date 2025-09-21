@@ -14,11 +14,6 @@ pub const Example = struct {
 
 pub const examples = [_]Example{
     .{
-        .name = "shapes-transform",
-        .root_source = "sokol_examples/shapes-transform-sapp.zig",
-        .shader = "sokol_examples/shapes-transform-sapp.glsl",
-    },
-    .{
         .name = "offscreen",
         .root_source = "sokol_examples/offscreen-sapp.zig",
         .shader = "sokol_examples/offscreen-sapp.glsl",
