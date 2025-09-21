@@ -34,7 +34,8 @@ pub fn build(b: *std.Build) void {
 
     const cimgui = cimgui_dep.module(cimgui_conf.module_name);
     b.modules.put("cimgui", cimgui) catch @panic("OOM");
-    b.installArtifact(cimgui_dep.artifact(cimgui_conf.clib_name));
+    const cimgui_clib = cimgui_dep.artifact(cimgui_conf.clib_name);
+    b.installArtifact(cimgui_clib);
 
     const rowmath_dep = b.dependency("rowmath", .{
         .target = target,
@@ -48,6 +49,14 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
     b.installArtifact(stb_image_dep.artifact("stb_image"));
+
+    if (target.result.cpu.arch.isWasm()) {
+        const emsdk_zig = b.dependency("emsdk-zig", .{});
+        const emsdk_dep = emsdk_zig.builder.dependency("emsdk", .{});
+        const sysroot = emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
+        sokol_clib.addSystemIncludePath(sysroot);
+        cimgui_clib.addSystemIncludePath(sysroot);
+    }
 }
 
 pub const Options = struct {
@@ -106,9 +115,6 @@ pub fn buildWeb(b: *std.Build, examples_dep: *std.Build.Dependency, opts: Option
 
     const emsdk_zig = examples_dep.builder.dependency("emsdk-zig", .{});
     const emsdk_dep = emsdk_zig.builder.dependency("emsdk", .{});
-    const sysroot = emsdk_dep.path("upstream/emscripten/cache/sysroot/include");
-    examples_dep.artifact("sokol_clib").addSystemIncludePath(sysroot);
-    examples_dep.artifact(cimgui_conf.clib_name).addSystemIncludePath(sysroot);
 
     const sokol_dep = examples_dep.builder.dependency("sokol", .{});
 
