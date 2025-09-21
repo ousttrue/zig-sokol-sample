@@ -13,16 +13,6 @@ pub const Example = struct {
 };
 
 pub const examples = [_]Example{
-    // - [ ] [cubemaprt](sokol_examples/cubemaprt-sapp.zig)
-    // - [ ] [miprender](sokol_examples/miprender-sapp.zig)
-    // - [ ] [layerrender](sokol_examples/layerrender-sapp.zig)
-    // - [ ] [primtypes](sokol_examples/primtypes-sapp.zig)
-    // - [ ] [uvwrap](sokol_examples/uvwrap-sapp.zig)
-    .{
-        .name = "mipmap",
-        .root_source = "sokol_examples/mipmap-sapp.zig",
-        .shader = "sokol_examples/mipmap-sapp.glsl",
-    },
     // - [ ] [uniformtypes](sokol_examples/uniformtypes-sapp.zig)
     // - [ ] [blend](sokol_examples/blend-sapp.zig)
     // - [ ] [sdf](sokol_examples/sdf-sapp.zig)

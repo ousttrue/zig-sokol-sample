@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-//  mipmap-sapp.c
+//  https://github.com/floooh/sokol-samples/blob/master/sapp/mipmap-sapp.c
 //  Demonstrate all the mipmapping filters.
 //------------------------------------------------------------------------------
 const std = @import("std");
@@ -13,7 +13,7 @@ const Mat4 = rowmath.Mat4;
 const state = struct {
     var pip = sg.Pipeline{};
     var vbuf = sg.Buffer{};
-    var img = sg.Image{};
+    var tex_view = sg.View{};
     var smp: [12]sg.Sampler = undefined;
     var r: f32 = 0;
     const pixels = struct {
@@ -76,8 +76,8 @@ export fn init() void {
             else => unreachable,
         };
         const dim = 1 << (8 - mip_index);
-        img_data.subimage[0][mip_index].ptr = ptr;
-        img_data.subimage[0][mip_index].size = (dim * dim * 4);
+        img_data.mip_levels[mip_index].ptr = ptr;
+        img_data.mip_levels[mip_index].size = dim * dim * 4;
         for (0..dim) |_| {
             for (0..dim) |_| {
                 ptr[0] = if (even_odd) mip_colors[mip_index] else 0xFF000000;
@@ -87,12 +87,17 @@ export fn init() void {
             even_odd = !even_odd;
         }
     }
-    state.img = sg.makeImage(.{
+    const img = sg.makeImage(.{
         .width = 256,
         .height = 256,
         .num_mipmaps = 9,
         .pixel_format = .RGBA8,
         .data = img_data,
+    });
+    state.tex_view = sg.makeView(.{
+        .texture = .{
+            .image = img,
+        },
     });
 
     // the first 4 samplers are just different min-filters
@@ -173,7 +178,7 @@ export fn frame() void {
 
     var bind = sg.Bindings{};
     bind.vertex_buffers[0] = state.vbuf;
-    bind.images[mipmap_shader.IMG_tex] = state.img;
+    bind.views[mipmap_shader.VIEW_tex] = state.tex_view;
     {
         sg.beginPass(.{ .swapchain = sokol.glue.swapchain() });
         defer sg.endPass();
